@@ -1,0 +1,116 @@
+/**
+ * BusinessMind AI — Design Tokens
+ * Single source of truth for color, applied via [data-theme] on <html>.
+ * Never hardcode hex values in components — always reference these variables
+ * (through the Tailwind theme mapping in index.css).
+ */
+
+:root,
+[data-theme='light'] {
+  /* Surfaces */
+  --bg-base: #ffffff;
+  --bg-subtle: #f8fafc;
+  --bg-muted: #f1f5f9;
+  --bg-overlay: rgba(15, 23, 42, 0.45);
+
+  /* Borders */
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+
+  /* Text */
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --text-disabled: #94a3b8;
+  --text-on-accent: #ffffff;
+
+  /* Accent (Sky Blue) */
+  --accent: #0ea5e9;
+  --accent-hover: #0284c7;
+  --accent-active: #0369a1;
+  --accent-subtle: #e0f2fe;
+
+  /* Accessible accent variants — the base --accent (#0ea5e9) only reaches
+     2.77:1 against white, well under the 4.5:1 WCAG AA text threshold.
+     These darker variants are used anywhere accent renders as text or sits
+     behind white text (buttons); --accent itself stays reserved for icons,
+     borders, focus rings, and subtle fills, where text-contrast rules
+     don't apply. */
+  --accent-solid: #0369a1;
+  --accent-solid-hover: #075985;
+  --accent-solid-active: #0c4a6e;
+  --accent-text: #0369a1;
+
+  /* Semantic */
+  --success: #16a34a;
+  --success-subtle: #dcfce7;
+  --warning: #d97706;
+  --warning-subtle: #fef3c7;
+  --danger: #dc2626;
+  --danger-subtle: #fee2e2;
+
+  /* Elevation — one subtle shadow only */
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+
+  /* Focus ring */
+  --ring: #0ea5e9;
+}
+
+[data-theme='dark'] {
+  /* Surfaces */
+  --bg-base: #0b0f17;
+  --bg-subtle: #111827;
+  --bg-muted: #1e293b;
+  --bg-overlay: rgba(0, 0, 0, 0.6);
+
+  /* Borders */
+  --border: #1f2937;
+  --border-strong: #334155;
+
+  /* Text */
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-disabled: #64748b;
+  --text-on-accent: #0b0f17;
+
+  /* Accent */
+  --accent: #38bdf8;
+  --accent-hover: #0ea5e9;
+  --accent-active: #0284c7;
+  --accent-subtle: #0c2436;
+
+  /* Accessible accent variants — dark mode's brighter accent already
+     passes AA against the dark background at every shade, so these can
+     reuse the existing scale rather than needing separate darker values. */
+  --accent-solid: #38bdf8;
+  --accent-solid-hover: #0ea5e9;
+  --accent-solid-active: #0284c7;
+  --accent-text: #38bdf8;
+
+  /* Semantic */
+  --success: #22c55e;
+  --success-subtle: #14291b;
+  --warning: #f59e0b;
+  --warning-subtle: #2c2210;
+  --danger: #ef4444;
+  --danger-subtle: #2c1414;
+
+  /* Elevation */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+
+  /* Focus ring */
+  --ring: #38bdf8;
+}
+
+/* Respect reduced-motion system preference everywhere */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
