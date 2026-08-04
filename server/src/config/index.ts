@@ -20,7 +20,7 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 /**
  * Reads a required environment variable. Throws if missing or empty.
  */
-function requireEnv(key: string): string {
+export function requireEnv(key: string): string {
   const value = process.env[key];
   if (!value || value.trim() === '') {
     throw new Error(
@@ -34,7 +34,7 @@ function requireEnv(key: string): string {
 /**
  * Reads an optional environment variable with a fallback default.
  */
-function optionalEnv(key: string, defaultValue: string): string {
+export function optionalEnv(key: string, defaultValue: string): string {
   const value = process.env[key];
   return value && value.trim() !== '' ? value.trim() : defaultValue;
 }
@@ -42,7 +42,7 @@ function optionalEnv(key: string, defaultValue: string): string {
 /**
  * Reads a required integer environment variable.
  */
-function requireEnvInt(key: string): number {
+export function requireEnvInt(key: string): number {
   const value = requireEnv(key);
   const parsed = parseInt(value, 10);
   if (isNaN(parsed)) {
