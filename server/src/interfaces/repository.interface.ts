@@ -30,9 +30,11 @@ export interface IRepository<T, C, U> {
 
   /**
    * Finds a paginated list of entities matching optional filters.
+   * Filters use a generic record to decouple the interface from
+   * storage-specific types like Mongoose FilterQuery.
    */
   findAll(
-    filters: Partial<T>,
+    filters: Record<string, unknown>,
     pagination: PaginationOptions,
   ): Promise<{ data: T[]; pagination: PaginationMeta }>;
 
@@ -56,7 +58,7 @@ export interface IRepository<T, C, U> {
   /**
    * Counts entities matching optional filters.
    */
-  count(filters?: Partial<T>): Promise<number>;
+  count(filters?: Record<string, unknown>): Promise<number>;
 
   /**
    * Checks whether an entity with the given ID exists.
@@ -71,8 +73,8 @@ export interface IRepository<T, C, U> {
  */
 export interface IReadonlyRepository<T> {
   findById(id: string): Promise<T | null>;
-  findAll(filters: Partial<T>, pagination: PaginationOptions): Promise<{ data: T[]; pagination: PaginationMeta }>;
-  count(filters?: Partial<T>): Promise<number>;
+  findAll(filters: Record<string, unknown>, pagination: PaginationOptions): Promise<{ data: T[]; pagination: PaginationMeta }>;
+  count(filters?: Record<string, unknown>): Promise<number>;
   exists(id: string): Promise<boolean>;
 }
 

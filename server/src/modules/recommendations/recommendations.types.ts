@@ -4,7 +4,6 @@
  */
 
 import type { ISODateString } from '../../types/common.types';
-import type { RiskLevel } from '../../types/common.types';
 
 export type RiskLevelType = 'low' | 'medium' | 'high';
 export type RecommendationStatus = 'active' | 'dismissed' | 'implemented';

@@ -1,0 +1,104 @@
+/**
+ * StartupScreen Styles
+ *
+ * Uses design-token CSS variables for full light/dark theme support.
+ * All styles are scoped with the .startup- prefix to avoid collisions.
+ *
+ * No Tailwind utilities — pure CSS for maximum control over transitions
+ * and the startup-specific pulsing animation.
+ */
+
+.startup-root {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 48px;
+  background-color: var(--bg-base);
+  will-change: opacity;
+}
+
+/* ─── Brand ──────────────────────────────────────────────────────────────── */
+
+.startup-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.startup-logo {
+  margin-bottom: 4px;
+}
+
+.startup-logo-bg {
+  fill: var(--accent);
+}
+
+.startup-logo-letter {
+  fill: var(--text-on-accent);
+}
+
+.startup-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.startup-tagline {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ─── Status ─────────────────────────────────────────────────────────────── */
+
+.startup-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+}
+
+.startup-status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.startup-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--accent);
+  animation: startup-pulse 1.4s ease-in-out infinite;
+}
+
+.startup-label {
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+.startup-error {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--danger);
+}
+
+/* ─── Pulsing Animation ──────────────────────────────────────────────────── */
+
+@keyframes startup-pulse {
+  0%, 100% { opacity: 0.3; }
+  50%      { opacity: 1; }
+}

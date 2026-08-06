@@ -79,7 +79,7 @@ export abstract class BaseRepository<TDocument, TEntity, TCreate, TUpdate>
     const doc = await this.model
       .findByIdAndUpdate(
         id,
-        { $set: data as UpdateQuery<TDocument> },
+        { $set: data as unknown as UpdateQuery<TDocument> },
         { new: true, runValidators: true },
       )
       .exec();

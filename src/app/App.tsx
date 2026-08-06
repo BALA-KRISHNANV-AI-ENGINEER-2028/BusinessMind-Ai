@@ -1,3 +1,4 @@
+import { useCallback, useState } from 'react';
 import { RouterProvider } from 'react-router-dom';
 import { ThemeProvider } from './providers/ThemeProvider';
 import { QueryProvider } from './providers/QueryProvider';
@@ -9,12 +10,34 @@ import { PermissionProvider } from '../contexts/PermissionContext';
 import { SidebarProvider } from '../contexts/SidebarContext';
 import { ToastProvider } from '../components/ui/Toast';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
+import { StartupScreen } from '../components/startup/StartupScreen';
+import { useAppInitializer } from '../hooks/useAppInitializer';
 import { router } from './router';
 
-export function App() {
+/**
+ * AppContent
+ *
+ * Manages the startup → application transition.
+ * The StartupScreen renders during initialization and fades out
+ * once all real async tasks have completed.
+ */
+function AppContent() {
+  const initState = useAppInitializer();
+  const [showStartup, setShowStartup] = useState(true);
+
+  const handleStartupComplete = useCallback(() => {
+    setShowStartup(false);
+  }, []);
+
   return (
-    <ErrorBoundary>
-      <ThemeProvider>
+    <>
+      {showStartup && (
+        <StartupScreen
+          initState={initState}
+          onComplete={handleStartupComplete}
+        />
+      )}
+      {initState.isReady && (
         <QueryProvider>
           <LoadingProvider>
             <AuthProvider>
@@ -32,6 +55,16 @@ export function App() {
             </AuthProvider>
           </LoadingProvider>
         </QueryProvider>
+      )}
+    </>
+  );
+}
+
+export function App() {
+  return (
+    <ErrorBoundary>
+      <ThemeProvider>
+        <AppContent />
       </ThemeProvider>
     </ErrorBoundary>
   );

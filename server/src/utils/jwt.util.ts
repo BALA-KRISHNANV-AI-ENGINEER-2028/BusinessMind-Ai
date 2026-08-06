@@ -10,6 +10,7 @@
  */
 
 import jwt from 'jsonwebtoken';
+import type { SignOptions } from 'jsonwebtoken';
 import { config } from '../config/index';
 import { TOKEN_TTL } from '../constants/app.constants';
 import {
@@ -31,11 +32,12 @@ import type { JwtPayload, RefreshTokenPayload } from '../types/auth.types';
  * const { token, expiresAt } = signAccessToken(jwtPayload);
  */
 export function signAccessToken(payload: JwtPayload): { token: string; expiresAt: number } {
-  const token = jwt.sign(payload, config.jwt.secret, {
-    expiresIn: config.jwt.expiresIn,
+  const options: SignOptions = {
+    expiresIn: config.jwt.expiresIn as SignOptions['expiresIn'],
     issuer: 'businessmind-api',
     audience: 'businessmind-client',
-  });
+  };
+  const token = jwt.sign(payload, config.jwt.secret, options);
 
   return {
     token,
@@ -49,11 +51,12 @@ export function signAccessToken(payload: JwtPayload): { token: string; expiresAt
  * Signs and returns a refresh JWT.
  */
 export function signRefreshToken(payload: RefreshTokenPayload): string {
-  return jwt.sign(payload, config.jwt.refreshSecret, {
-    expiresIn: config.jwt.refreshExpiresIn,
+  const options: SignOptions = {
+    expiresIn: config.jwt.refreshExpiresIn as SignOptions['expiresIn'],
     issuer: 'businessmind-api',
     audience: 'businessmind-client',
-  });
+  };
+  return jwt.sign(payload, config.jwt.refreshSecret, options);
 }
 
 // ─── Verify Access Token ──────────────────────────────────────────────────────

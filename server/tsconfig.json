@@ -42,7 +42,6 @@
     "paths": {
       "@config/*": ["config/*"],
       "@constants/*": ["constants/*"],
-      "@controllers/*": ["modules/*/controllers/*"],
       "@errors/*": ["errors/*"],
       "@interfaces/*": ["interfaces/*"],
       "@lib/*": ["lib/*"],
@@ -65,5 +64,11 @@
     "forceConsistentCasingInFileNames": true
   },
   "include": ["src/**/*.ts", "src/**/*.d.ts"],
-  "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"]
+  "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"],
+  "ts-node": {
+    "require": ["tsconfig-paths/register"],
+    "files": true,
+    "transpileOnly": false,
+    "experimentalSpecifierResolution": "node"
+  }
 }
