@@ -21,7 +21,6 @@
  * 12. errorMiddleware         — Global error handler (always last)
  */
 
-import './types/express.d';
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
