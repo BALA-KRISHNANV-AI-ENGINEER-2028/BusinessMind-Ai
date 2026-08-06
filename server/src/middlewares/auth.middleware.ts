@@ -1,29 +1,40 @@
 /**
  * Authentication middleware.
  *
- * Validates the Bearer JWT from the Authorization header.
+ * Validates access JWT from:
+ * 1. Authorization header (Bearer token)
+ * 2. HTTP-only cookies (bm_access_token)
+ *
  * On success: attaches the decoded payload to req.user.
- * On failure: throws a typed error (TokenMissingError, TokenExpiredError, etc.).
- *
- * Usage:
- *   router.get('/protected', authenticate, asyncHandler(controller.method));
- *
- * For optional auth (attach user if present, but don't reject):
- *   router.get('/optional', optionalAuthenticate, asyncHandler(controller.method));
+ * On failure: throws typed errors (TokenMissingError, TokenExpiredError, etc.).
  */
 
 import type { Request, Response, NextFunction } from 'express';
 import { extractBearerToken, verifyAccessToken } from '../utils/jwt.util';
 import { TokenMissingError } from '../errors/HttpErrors';
+import { ACCESS_COOKIE_NAME } from '../config/cookie.config';
 
 /**
- * Strictly requires a valid Bearer JWT.
+ * Extracts access token from Authorization header or HTTP-only cookies.
+ */
+function extractToken(req: Request): string | undefined {
+  const bearerToken = extractBearerToken(req.headers.authorization);
+  if (bearerToken) return bearerToken;
+
+  const cookieToken = req.cookies?.[ACCESS_COOKIE_NAME] as string | undefined;
+  return cookieToken || undefined;
+}
+
+/**
+ * Strictly requires a valid JWT.
  * Attaches the decoded payload to req.user.
- * Throws TokenMissingError, TokenExpiredError, or TokenInvalidError on failure.
  */
 export function authenticate(req: Request, _res: Response, next: NextFunction): void {
   try {
-    const token = extractBearerToken(req.headers.authorization);
+    const token = extractToken(req);
+    if (!token) {
+      throw new TokenMissingError();
+    }
     const payload = verifyAccessToken(token);
     req.user = {
       id: payload.sub,
@@ -42,12 +53,10 @@ export function authenticate(req: Request, _res: Response, next: NextFunction): 
 /**
  * Optional authentication — attaches user if token is present and valid,
  * but allows the request through even without a token.
- *
- * Useful for endpoints that behave differently for authenticated users.
  */
 export function optionalAuthenticate(req: Request, _res: Response, next: NextFunction): void {
   try {
-    const token = extractBearerToken(req.headers.authorization);
+    const token = extractToken(req);
     if (token) {
       const payload = verifyAccessToken(token);
       req.user = {
@@ -61,21 +70,12 @@ export function optionalAuthenticate(req: Request, _res: Response, next: NextFun
     }
     next();
   } catch {
-    // Silently ignore invalid tokens for optional auth routes
     next();
   }
 }
 
-/**
- * Requires the request to be authenticated (alias for `authenticate`).
- * Use this when you want a semantically named guard in route files.
- */
 export const requireAuth = authenticate;
 
-/**
- * Guards a route that requires the user to provide their token.
- * Throws TokenMissingError if req.user is not set (i.e. authenticate was not called).
- */
 export function ensureAuthenticated(req: Request, _res: Response, next: NextFunction): void {
   if (!req.user) {
     return next(new TokenMissingError());

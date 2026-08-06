@@ -61,3 +61,21 @@ healthRouter.get('/detailed', (req: Request, res: Response) => {
     },
   });
 });
+
+// ─── GET /api/v1/health/db ───────────────────────────────────────────────────
+// Dedicated Database Health Check probe.
+healthRouter.get('/db', (_req: Request, res: Response) => {
+  const dbConnected = isDatabaseConnected();
+  const dbStatus = getDatabaseStatus();
+  const statusCode = dbConnected ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE;
+
+  res.status(statusCode).json({
+    success: dbConnected,
+    data: {
+      status: dbStatus,
+      connected: dbConnected,
+      timestamp: new Date().toISOString(),
+    },
+  });
+});
+

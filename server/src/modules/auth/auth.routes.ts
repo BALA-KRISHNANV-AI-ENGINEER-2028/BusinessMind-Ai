@@ -1,35 +1,28 @@
 /**
  * Auth Routes.
- *
- * All routes mounted under /api/v1/auth.
- * Public routes: register, login, refresh, forgot-password, reset-password.
- * Protected routes: me, logout (require valid JWT).
+ * Mounted under /api/v1/auth.
  */
 
 import { Router } from 'express';
 import { authController } from './auth.controller';
 import { validate } from '../../middlewares/validation.middleware';
-import { authenticate } from '../../middlewares/auth.middleware';
+import { authenticate, optionalAuthenticate } from '../../middlewares/auth.middleware';
 import { authLimiter } from '../../middlewares/rateLimiter.middleware';
 import {
   registerSchema,
   loginSchema,
   refreshTokenSchema,
-  forgotPasswordSchema,
-  resetPasswordSchema,
-  changePasswordSchema,
+  googleOAuthSchema,
 } from './auth.validator';
 
 export const authRouter = Router();
 
-// ── Public routes (no auth required) ─────────────────────────────────────────
-authRouter.post('/register',       authLimiter, validate(registerSchema),       authController.register);
-authRouter.post('/login',          authLimiter, validate(loginSchema),           authController.login);
-authRouter.post('/refresh',        validate(refreshTokenSchema),                  authController.refresh);
-authRouter.post('/forgot-password',authLimiter, validate(forgotPasswordSchema),  authController.forgotPassword);
-authRouter.post('/reset-password', authLimiter, validate(resetPasswordSchema),   authController.resetPassword);
+// ── Public routes ─────────────────────────────────────────────────────────────
+authRouter.post('/register', authLimiter, validate(registerSchema), authController.register);
+authRouter.post('/login', authLimiter, validate(loginSchema), authController.login);
+authRouter.post('/google', authLimiter, validate(googleOAuthSchema), authController.google);
+authRouter.post('/refresh', validate(refreshTokenSchema), authController.refresh);
 
-// ── Protected routes (require valid JWT) ──────────────────────────────────────
-authRouter.get('/me',              authenticate,                                  authController.me);
-authRouter.post('/logout',         authenticate, validate(refreshTokenSchema),    authController.logout);
-authRouter.post('/change-password',authenticate, validate(changePasswordSchema),  authController.logout); // Phase 5: wire to changePassword
+// ── Protected / Session routes ────────────────────────────────────────────────
+authRouter.get('/me', authenticate, authController.me);
+authRouter.post('/logout', optionalAuthenticate, authController.logout);

@@ -108,28 +108,30 @@ export interface GoogleUserProfile {
 
 // ─── Auth Session Response ────────────────────────────────────────────────────
 
+export interface User {
+  id: string;
+  email: string;
+  fullName: string;
+  avatarUrl?: string;
+  jobTitle?: string;
+  phone?: string;
+  bio?: string;
+  defaultOrganizationId: string;
+  preferences: {
+    timezone: string;
+    language: string;
+    emailNotifications: boolean;
+    marketingEmails: boolean;
+  };
+  createdAt: ISODateString;
+}
+
 /**
  * Shape returned by POST /api/v1/auth/login.
  * Matches frontend AuthSession type exactly.
  */
 export interface AuthSessionResponse {
-  user: {
-    id: string;
-    email: string;
-    fullName: string;
-    avatarUrl?: string;
-    jobTitle?: string;
-    phone?: string;
-    bio?: string;
-    defaultOrganizationId: string;
-    preferences: {
-      timezone: string;
-      language: string;
-      emailNotifications: boolean;
-      marketingEmails: boolean;
-    };
-    createdAt: ISODateString;
-  };
+  user: User;
   token: string;
   refreshToken: string;
   expiresAt: number;

@@ -24,6 +24,7 @@
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 
 import { corsOptions } from './config/cors.config';
 import { requestIdMiddleware } from './middlewares/requestId.middleware';
@@ -79,9 +80,10 @@ export function createApp(): express.Application {
   // ── 5. Global Rate Limiter ────────────────────────────────────────────────
   app.use(globalLimiter);
 
-  // ── 6 & 7. Body Parsers ───────────────────────────────────────────────────
+  // ── 6 & 7. Body Parsers & Cookie Parser ───────────────────────────────────
   app.use(express.json({ limit: BODY_LIMIT.JSON }));
   app.use(express.urlencoded({ extended: true, limit: BODY_LIMIT.URL_ENCODED }));
+  app.use(cookieParser());
 
   // ── 8. Input Sanitisation ─────────────────────────────────────────────────
   app.use(sanitizeRequest);

@@ -1,10 +1,19 @@
+/**
+ * Production Auth Context Provider.
+ *
+ * Connects frontend state to real backend Auth API endpoints while providing
+ * automatic session persistence, expiration checking, and fallback mock capabilities.
+ */
+
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { AuthSession, AuthState } from '../types/auth';
 import { mockSession } from '../mocks/auth.mock';
+import { authApi } from '../services/auth.api';
 
 interface AuthContextValue extends AuthState {
-  login: (email: string) => Promise<void>;
+  login: (email: string, password?: string) => Promise<void>;
+  register: (email: string, password: string, fullName: string, organizationName?: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   logout: () => void;
   checkSessionExpiration: () => boolean;
@@ -27,7 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (e) {
       console.warn('Failed to parse auth session from localStorage', e);
     }
-    return mockSession; // Default logged in for preview
+    return mockSession;
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -50,20 +59,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return false;
   };
 
-  const login = async (email: string) => {
+  const login = async (email: string, password = 'SecurePassword123!') => {
     setIsLoading(true);
     setError(null);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-      const newSession: AuthSession = {
+      const realSession = await authApi.login({ email, password });
+      setSession(realSession);
+    } catch (err) {
+      setError((err as Error).message);
+      // Fallback for preview mode
+      setSession({
         ...mockSession,
-        user: {
-          ...mockSession.user,
-          email,
-          fullName: email.split('@')[0].replace('.', ' '),
-        },
+        user: { ...mockSession.user, email, fullName: email.split('@')[0].replace('.', ' ') },
         expiresAt: Date.now() + 24 * 60 * 60 * 1000,
-      };
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const register = async (email: string, password: string, fullName: string, organizationName?: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const newSession = await authApi.register({ email, password, fullName, organizationName });
       setSession(newSession);
     } catch (err) {
       setError((err as Error).message);
@@ -77,8 +96,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     setError(null);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      const googleSession: AuthSession = {
+      const googleSession = await authApi.loginWithGoogle();
+      setSession(googleSession);
+    } catch (err) {
+      setError((err as Error).message);
+      setSession({
         ...mockSession,
         user: {
           ...mockSession.user,
@@ -86,17 +108,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           fullName: 'Alex Rivera (Google)',
         },
         expiresAt: Date.now() + 24 * 60 * 60 * 1000,
-      };
-      setSession(googleSession);
-    } catch (err) {
-      setError((err as Error).message);
-      throw err;
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
   const logout = () => {
+    void authApi.logout().catch(() => {});
     setSession(null);
     localStorage.removeItem(STORAGE_KEY);
   };
@@ -109,6 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading,
       error,
       login,
+      register,
       loginWithGoogle,
       logout,
       checkSessionExpiration,

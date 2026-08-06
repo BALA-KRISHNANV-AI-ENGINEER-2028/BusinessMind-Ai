@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { ChevronsLeft, ChevronsRight, X, Brain } from 'lucide-react';
+import { ChevronsLeft, ChevronsRight, X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { primaryNavItems, secondaryNavItems } from './navConfig';
 import type { NavItem } from '../../types/navigation';
@@ -43,9 +43,11 @@ export function Sidebar({ collapsed, onToggleCollapsed, mobileOpen, onMobileClos
           collapsed && 'justify-center px-0',
         )}
       >
-        <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-accent text-text-on-accent">
-          <Brain size={16} aria-hidden="true" />
-        </div>
+        <img
+          src="/logo-app-icon.png"
+          alt="BusinessMind AI"
+          style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'contain', flexShrink: 0 }}
+        />
         {!collapsed && (
           <span className="truncate text-sm font-semibold text-text-primary">BusinessMind AI</span>
         )}

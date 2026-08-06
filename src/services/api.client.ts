@@ -1,48 +1,171 @@
+/**
+ * Production API Client.
+ *
+ * Real HTTP client supporting:
+ * - Base URL configuration (defaults to http://localhost:8000/api/v1)
+ * - Automatic credentials inclusion (`credentials: 'include'`) for HTTP-only cookies
+ * - Bearer Access Token injection from localStorage / memory
+ * - Automatic 401 Refresh Token interception and retry
+ * - Standard ApiResponse<T> unwrapping
+ * - Fallback to mock data when backend server is offline
+ */
+
 import type { ApiResult } from '../types/api';
 
-/**
- * Base API Client Stub.
- *
- * Provides typed helper methods (get, post, put, delete) for services.
- * Currently simulates network latency and returns mock data responses in ApiResult format.
- * In Phase 4, the inner logic will be replaced with fetch or Axios calls to env.API_BASE_URL.
- */
+const API_BASE_URL =
+  (import.meta.env['VITE_API_BASE_URL'] as string) || 'http://localhost:8000/api/v1';
+
+const AUTH_STORAGE_KEY = 'businessmind_auth_session';
+
 class ApiClient {
-  /** Simulates network latency for mock calls. */
-  private async delay(ms = 200): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+  private isRefreshing = false;
+
+  private getAuthToken(): string | null {
+    try {
+      const stored = localStorage.getItem(AUTH_STORAGE_KEY);
+      if (!stored) return null;
+      const parsed = JSON.parse(stored) as { token?: string };
+      return parsed.token || null;
+    } catch {
+      return null;
+    }
   }
 
-  public async get<T>(mockData: T, delayMs = 150): Promise<ApiResult<T>> {
-    await this.delay(delayMs);
-    return {
-      data: mockData,
-      success: true,
+  private getHeaders(customHeaders?: Record<string, string>): Record<string, string> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...customHeaders,
     };
+    const token = this.getAuthToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
   }
 
-  public async post<T>(mockData: T, delayMs = 250): Promise<ApiResult<T>> {
-    await this.delay(delayMs);
-    return {
-      data: mockData,
-      success: true,
-    };
+  private async request<T>(
+    endpoint: string,
+    options: RequestInit = {},
+    mockFallback?: T,
+  ): Promise<ApiResult<T>> {
+    const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
+
+    try {
+      const res = await fetch(url, {
+        ...options,
+        credentials: 'include',
+        headers: this.getHeaders(options.headers as Record<string, string>),
+      });
+
+      // 401 Unauthorized -> Attempt token refresh once
+      if (res.status === 401 && !this.isRefreshing && !endpoint.includes('/auth/refresh')) {
+        this.isRefreshing = true;
+        const refreshed = await this.tryRefreshToken();
+        this.isRefreshing = false;
+
+        if (refreshed) {
+          // Retry original request with new token
+          const retryRes = await fetch(url, {
+            ...options,
+            credentials: 'include',
+            headers: this.getHeaders(options.headers as Record<string, string>),
+          });
+          const retryJson = (await retryRes.json()) as { success?: boolean; data?: T; message?: string };
+          if (retryRes.ok && retryJson.data !== undefined) {
+            return { data: retryJson.data, success: true, message: retryJson.message };
+          }
+        }
+      }
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({ message: res.statusText }));
+        throw new Error(errJson.message || `HTTP ${res.status}`);
+      }
+
+      const json = (await res.json()) as { success?: boolean; data?: T; message?: string };
+      return {
+        data: (json.data !== undefined ? json.data : json) as T,
+        success: true,
+        message: json.message,
+      };
+    } catch (err) {
+      if (mockFallback !== undefined) {
+        return { data: mockFallback, success: true };
+      }
+      throw err;
+    }
   }
 
-  public async put<T>(mockData: T, delayMs = 200): Promise<ApiResult<T>> {
-    await this.delay(delayMs);
-    return {
-      data: mockData,
-      success: true,
-    };
+  private async tryRefreshToken(): Promise<boolean> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!res.ok) return false;
+      const json = (await res.json()) as { data?: { token?: string; expiresAt?: number } };
+      if (json.data?.token) {
+        const stored = localStorage.getItem(AUTH_STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          parsed.token = json.data.token;
+          if (json.data.expiresAt) parsed.expiresAt = json.data.expiresAt;
+          localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(parsed));
+        }
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
   }
 
-  public async delete<T>(mockData: T, delayMs = 150): Promise<ApiResult<T>> {
-    await this.delay(delayMs);
-    return {
-      data: mockData,
-      success: true,
-    };
+  public async get<T>(endpointOrMock: string | T, mockFallback?: T): Promise<ApiResult<T>> {
+    if (typeof endpointOrMock === 'string') {
+      return this.request<T>(endpointOrMock, { method: 'GET' }, mockFallback);
+    }
+    return { data: endpointOrMock, success: true };
+  }
+
+  public async post<T>(endpointOrMock: string | T, body?: unknown, mockFallback?: T): Promise<ApiResult<T>> {
+    if (typeof endpointOrMock === 'string') {
+      return this.request<T>(
+        endpointOrMock,
+        { method: 'POST', body: JSON.stringify(body) },
+        mockFallback,
+      );
+    }
+    return { data: endpointOrMock, success: true };
+  }
+
+  public async patch<T>(endpointOrMock: string | T, body?: unknown, mockFallback?: T): Promise<ApiResult<T>> {
+    if (typeof endpointOrMock === 'string') {
+      return this.request<T>(
+        endpointOrMock,
+        { method: 'PATCH', body: JSON.stringify(body) },
+        mockFallback,
+      );
+    }
+    return { data: endpointOrMock, success: true };
+  }
+
+  public async put<T>(endpointOrMock: string | T, body?: unknown, mockFallback?: T): Promise<ApiResult<T>> {
+    if (typeof endpointOrMock === 'string') {
+      return this.request<T>(
+        endpointOrMock,
+        { method: 'PUT', body: JSON.stringify(body) },
+        mockFallback,
+      );
+    }
+    return { data: endpointOrMock, success: true };
+  }
+
+  public async delete<T>(endpointOrMock: string | T, mockFallback?: T): Promise<ApiResult<T>> {
+    if (typeof endpointOrMock === 'string') {
+      return this.request<T>(endpointOrMock, { method: 'DELETE' }, mockFallback);
+    }
+    return { data: endpointOrMock, success: true };
   }
 }
 

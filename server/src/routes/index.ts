@@ -37,6 +37,7 @@ import { recommendationsRouter } from '../modules/recommendations/recommendation
 import { analyticsRouter } from '../modules/analytics/analytics.routes';
 import { chatRouter } from '../modules/chat/chat.routes';
 import { settingsRouter } from '../modules/settings/settings.routes';
+import { sessionRouter } from './session.routes';
 
 export const apiV1Router = Router();
 
@@ -47,6 +48,7 @@ apiV1Router.use(API_ROUTES.HEALTH, healthRouter);
 apiV1Router.use(API_ROUTES.AUTH, authRouter);
 apiV1Router.use(API_ROUTES.USERS, usersRouter);
 apiV1Router.use(API_ROUTES.ORGANIZATIONS, organizationsRouter);
+apiV1Router.use('/sessions', sessionRouter);
 apiV1Router.use(API_ROUTES.DOCUMENTS, documentsRouter);
 apiV1Router.use(API_ROUTES.KNOWLEDGE_BASE, knowledgeBaseRouter);
 apiV1Router.use(API_ROUTES.AI, aiRouter);

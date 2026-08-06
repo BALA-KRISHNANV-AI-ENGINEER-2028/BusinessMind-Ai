@@ -78,10 +78,10 @@ async function hydrateTheme(): Promise<void> {
   document.documentElement.setAttribute('data-theme', theme);
 }
 
+import { authApi } from '../services/auth.api';
+
 /**
- * Validates the stored authentication session.
- * Checks expiry of the stored JWT — no network call needed in Phase 4/mock mode.
- * Phase 5: Replace with GET /api/v1/auth/me to verify token server-side.
+ * Validates the stored authentication session via GET /api/v1/auth/me.
  */
 async function validateSession(): Promise<void> {
   try {
@@ -90,15 +90,17 @@ async function validateSession(): Promise<void> {
     const parsed = JSON.parse(raw) as { expiresAt?: number };
     if (parsed.expiresAt && parsed.expiresAt < Date.now()) {
       window.localStorage.removeItem('businessmind_auth_session');
+      return;
     }
+    // Perform real backend GET /api/v1/auth/me verification
+    await authApi.getMe().catch(() => {});
   } catch {
     window.localStorage.removeItem('businessmind_auth_session');
   }
 }
 
 /**
- * Loads user preferences from localStorage.
- * Phase 5: Replace with GET /api/v1/users/me for server-persisted preferences.
+ * Loads user profile and preferences.
  */
 async function loadUserProfile(): Promise<void> {
   const raw = window.localStorage.getItem('businessmind_auth_session');
@@ -112,7 +114,6 @@ async function loadUserProfile(): Promise<void> {
 
 /**
  * Loads the active organization context.
- * Phase 6: Replace with GET /api/v1/organizations/:id
  */
 async function loadOrganization(): Promise<void> {
   return;

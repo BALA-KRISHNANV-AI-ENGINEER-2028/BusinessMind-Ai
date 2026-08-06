@@ -34,12 +34,12 @@
   margin-bottom: 4px;
 }
 
-.startup-logo-bg {
-  fill: var(--accent);
-}
-
-.startup-logo-letter {
-  fill: var(--text-on-accent);
+.startup-logo-img {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  object-fit: contain;
+  display: block;
 }
 
 .startup-title {

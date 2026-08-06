@@ -14,6 +14,7 @@ export interface Organization {
   logoUrl?: string;
   domain?: string;
   plan: OrgPlan;
+  status?: string;
   memberCount: number;
   createdAt: ISODateString;
   updatedAt: ISODateString;
@@ -38,6 +39,7 @@ export interface OrganizationInvite {
   email: string;
   role: Role;
   invitedBy: string;
+  token?: string;
   createdAt: ISODateString;
   expiresAt: ISODateString;
 }

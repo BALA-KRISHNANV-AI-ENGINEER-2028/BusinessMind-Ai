@@ -41,7 +41,17 @@ export const loginSchema = z.object({
 
 export const refreshTokenSchema = z.object({
   body: z.object({
-    refreshToken: z.string({ required_error: 'Refresh token is required' }).min(1),
+    refreshToken: z.string().optional(),
+  }),
+});
+
+// ─── Google OAuth ─────────────────────────────────────────────────────────────
+
+export const googleOAuthSchema = z.object({
+  body: z.object({
+    code: z.string().optional(),
+    idToken: z.string().optional(),
+    redirectUri: z.string().optional(),
   }),
 });
 
