@@ -12,3 +12,7 @@ export * from './session.model';
 export * from './audit-log.model';
 export * from './settings.model';
 export * from './notification.model';
+export * from './knowledge-base.model';
+export * from './document.model';
+export * from './document-version.model';
+

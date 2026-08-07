@@ -50,6 +50,10 @@ export const QUERY_KEYS = {
   DOCUMENTS:          ['documents']         as const,
   DOCUMENT:  (id: string) => ['documents', id] as const,
 
+  // Knowledge Base
+  KNOWLEDGE_BASE:     ['knowledge-base']    as const,
+
+
   // Recommendations
   RECOMMENDATIONS: ['recommendations'] as const,
 

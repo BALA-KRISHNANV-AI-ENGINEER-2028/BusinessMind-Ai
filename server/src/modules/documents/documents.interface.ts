@@ -1,16 +1,43 @@
 /**
- * Documents Module — Interface.
+ * Documents Module — Service Interface.
  */
 
-import type { Document, CreateDocumentDto, UpdateDocumentDto } from './documents.types';
-import type { PaginationOptions, PaginationMeta } from '../../types/common.types';
+import type { DocumentEntity } from '../../repositories/document.repository';
+import type { UpdateDocumentInput, DocumentQueryInput } from './documents.types';
+import type { PaginationMeta } from '../../types/common.types';
+import type { Readable } from 'stream';
 
 export interface IDocumentsService {
-  getById(id: string, orgId: string): Promise<Document>;
-  getAll(orgId: string, pagination: PaginationOptions): Promise<{ data: Document[]; pagination: PaginationMeta }>;
-  create(data: CreateDocumentDto): Promise<Document>;
-  update(id: string, data: UpdateDocumentDto): Promise<Document>;
-  delete(id: string, orgId: string): Promise<void>;
-  // Phase 5+: initiateProcessing(id: string): Promise<void>
-  // Phase 6+: getUploadUrl(orgId: string, filename: string): Promise<string>
+  upload(
+    organizationId: string,
+    userId: string,
+    file: Express.Multer.File,
+    knowledgeBaseId?: string,
+  ): Promise<DocumentEntity>;
+  getAll(
+    organizationId: string,
+    query: DocumentQueryInput,
+  ): Promise<{ data: DocumentEntity[]; pagination: PaginationMeta }>;
+  getById(organizationId: string, id: string): Promise<DocumentEntity>;
+  update(
+    organizationId: string,
+    userId: string,
+    id: string,
+    input: UpdateDocumentInput,
+  ): Promise<DocumentEntity>;
+  delete(organizationId: string, userId: string, id: string): Promise<void>;
+  getStatus(
+    organizationId: string,
+    id: string,
+  ): Promise<{
+    id: string;
+    processingStatus: string;
+    processingProgress: number;
+    processingError?: string | null;
+  }>;
+  getDownloadStream(
+    organizationId: string,
+    id: string,
+  ): Promise<{ stream: Readable; doc: DocumentEntity }>;
+  reprocess(organizationId: string, userId: string, id: string): Promise<DocumentEntity>;
 }

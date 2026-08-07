@@ -167,6 +167,38 @@ class ApiClient {
     }
     return { data: endpointOrMock, success: true };
   }
+
+  public async uploadFormData<T>(endpoint: string, formData: FormData, mockFallback?: T): Promise<ApiResult<T>> {
+    const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
+    const headers: Record<string, string> = {};
+    const token = this.getAuthToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+        headers,
+      });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({ message: res.statusText }));
+        throw new Error(errJson.message || `HTTP ${res.status}`);
+      }
+      const json = (await res.json()) as { success?: boolean; data?: T; message?: string };
+      return {
+        data: (json.data !== undefined ? json.data : json) as T,
+        success: true,
+        message: json.message,
+      };
+    } catch (err) {
+      if (mockFallback !== undefined) {
+        return { data: mockFallback, success: true };
+      }
+      throw err;
+    }
+  }
 }
 
 export const apiClient = new ApiClient();

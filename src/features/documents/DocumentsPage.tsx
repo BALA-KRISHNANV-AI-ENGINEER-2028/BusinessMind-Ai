@@ -1,49 +1,20 @@
-import { useMemo, useState } from 'react';
-import { FileText, LayoutGrid, List, Plus } from 'lucide-react';
+import { useState } from 'react';
+import { FileText, LayoutGrid, List, Plus, Eye } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Table } from '../../components/ui/Table';
 import type { TableColumn } from '../../components/ui/Table';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
-import { Pagination } from '../../components/ui/Pagination';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { DocumentUpload } from '../../components/domain';
 import { DocumentStatusBadge } from './components/DocumentStatusBadge';
 import { DocumentCard } from './components/DocumentCard';
 import { DocumentsFilter } from './components/DocumentsFilter';
-import { useToast } from '../../hooks/useToast';
+import { DocumentDetailsModal } from './components/DocumentDetailsModal';
 import { useDebounce } from '../../hooks/useDebounce';
-import { usePagination } from '../../hooks/usePagination';
 import { documentsService } from '../../services/documents.service';
+import type { DocumentItem } from '../../services/documents.service';
 import { QUERY_KEYS } from '../../constants';
-import type { DocumentSummary } from '../../types/business';
-
-const columns: TableColumn<DocumentSummary>[] = [
-  {
-    key: 'name',
-    header: 'Name',
-    sortable: true,
-    render: (doc) => (
-      <div className="flex items-center gap-2">
-        <FileText size={16} className="shrink-0 text-text-secondary" aria-hidden="true" />
-        <div>
-          <span className="font-medium">{doc.name}</span>
-          {doc.category && (
-            <p className="text-xs text-text-secondary">{doc.category}</p>
-          )}
-        </div>
-      </div>
-    ),
-  },
-  {
-    key: 'status',
-    header: 'Status',
-    render: (doc) => (doc.status ? <DocumentStatusBadge status={doc.status} /> : null),
-  },
-  { key: 'sizeLabel', header: 'Size' },
-  { key: 'uploadedBy', header: 'Uploaded by' },
-  { key: 'updatedLabel', header: 'Updated', sortable: true },
-];
 
 export function DocumentsPage() {
   const [searchInput, setSearchInput] = useState('');
@@ -51,50 +22,92 @@ export function DocumentsPage() {
   const [category, setCategory] = useState('all');
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [uploadOpen, setUploadOpen] = useState(false);
-  const { showToast } = useToast();
+  const [selectedDocument, setSelectedDocument] = useState<DocumentItem | null>(null);
+  const currentPage = 1;
+  const pageSize = 10;
 
   const debouncedSearch = useDebounce(searchInput, 300);
 
-  const { data: docsRes } = useQuery({
-    queryKey: QUERY_KEYS.DOCUMENTS,
-    queryFn: () => documentsService.getDocuments(),
+  const { data: docsRes, refetch } = useQuery({
+    queryKey: [QUERY_KEYS.DOCUMENTS, currentPage, debouncedSearch, status, category],
+    queryFn: () =>
+      documentsService.getDocuments({
+        page: currentPage,
+        pageSize,
+        search: debouncedSearch,
+        status: status !== 'all' ? status : undefined,
+        fileType: category !== 'all' ? category : undefined,
+      }),
   });
 
-  const allDocuments = docsRes?.success ? docsRes.data : [];
+  const documents = docsRes?.success ? docsRes.data : [];
 
-  const filtered = useMemo(() => {
-    return allDocuments.filter((doc) => {
-      const matchesSearch = doc.name.toLowerCase().includes(debouncedSearch.toLowerCase());
-      const matchesStatus = status === 'all' || doc.status === status;
-      const matchesCategory = category === 'all' || doc.category === category;
-      return matchesSearch && matchesStatus && matchesCategory;
-    });
-  }, [allDocuments, debouncedSearch, status, category]);
-
-  const { currentPage, totalPages, startIndex, endIndex, setPage } = usePagination({
-    totalItems: filtered.length,
-    initialPageSize: 6,
-  });
-
-  const pageDocuments = filtered.slice(startIndex, endIndex);
-
-  function handleFilesSelected(files: File[]) {
-    showToast({
-      title: `${files.length} file${files.length > 1 ? 's' : ''} queued`,
-      description: 'Documents will appear here once processing completes.',
-      variant: 'info',
-    });
-  }
+  const columns: TableColumn<DocumentItem>[] = [
+    {
+      key: 'name',
+      header: 'Name',
+      sortable: true,
+      render: (doc) => (
+        <div
+          className="flex items-center gap-2 cursor-pointer hover:text-accent-text transition-colors"
+          onClick={() => setSelectedDocument(doc)}
+        >
+          <FileText size={16} className="shrink-0 text-text-secondary" aria-hidden="true" />
+          <div>
+            <span className="font-medium">{doc.displayName}</span>
+            <p className="text-xs text-text-secondary">{doc.originalFilename}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (doc) => <DocumentStatusBadge status={doc.processingStatus} />,
+    },
+    {
+      key: 'fileSize',
+      header: 'Size',
+      render: (doc) => `${(doc.fileSize / (1024 * 1024)).toFixed(2)} MB`,
+    },
+    {
+      key: 'currentVersion',
+      header: 'Version',
+      render: (doc) => `v${doc.currentVersion}`,
+    },
+    {
+      key: 'createdAt',
+      header: 'Uploaded Date',
+      sortable: true,
+      render: (doc) => new Date(doc.createdAt).toLocaleDateString(),
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (doc) => (
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setSelectedDocument(doc)}
+            className="p-1 rounded text-text-secondary hover:text-text-primary hover:bg-bg-muted"
+            title="View Details"
+          >
+            <Eye size={16} />
+          </button>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-4">
       <PageHeader
         title="Documents"
-        description="Upload and manage source documents for your knowledge base."
+        description="Upload and manage source business documents for your knowledge base."
         actions={
           <Button onClick={() => setUploadOpen(true)}>
             <Plus size={16} aria-hidden="true" />
-            Upload
+            Upload Document
           </Button>
         }
       />
@@ -112,7 +125,7 @@ export function DocumentsPage() {
       {/* View mode toggle */}
       <div className="flex items-center justify-between">
         <p className="text-xs text-text-secondary">
-          {filtered.length} document{filtered.length !== 1 ? 's' : ''}
+          {documents.length} document{documents.length !== 1 ? 's' : ''} found
         </p>
         <div className="flex gap-1 rounded-md border border-border p-0.5">
           <button
@@ -148,26 +161,33 @@ export function DocumentsPage() {
       {viewMode === 'list' ? (
         <Table
           columns={columns}
-          data={pageDocuments}
+          data={documents}
           keyExtractor={(doc) => doc.id}
           emptyTitle="No documents found"
           emptyDescription="Try adjusting your filters, or upload a new document to get started."
         />
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {pageDocuments.map((doc) => (
-            <DocumentCard key={doc.id} document={doc} />
+          {documents.map((doc) => (
+            <div
+              key={doc.id}
+              onClick={() => setSelectedDocument(doc)}
+              className="cursor-pointer"
+            >
+              <DocumentCard
+                document={{
+                  id: doc.id,
+                  name: doc.displayName,
+                  updatedLabel: new Date(doc.createdAt).toLocaleDateString(),
+                  fileType: doc.fileType,
+                  status: doc.processingStatus === 'READY' ? 'processed' : doc.processingStatus === 'FAILED' ? 'failed' : 'processing',
+                  sizeLabel: `${(doc.fileSize / (1024 * 1024)).toFixed(2)} MB`,
+                  uploadedBy: 'Org User',
+                }}
+              />
+            </div>
           ))}
         </div>
-      )}
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={setPage}
-        />
       )}
 
       {/* Upload Modal */}
@@ -175,10 +195,24 @@ export function DocumentsPage() {
         open={uploadOpen}
         onClose={() => setUploadOpen(false)}
         title="Upload documents"
-        description="Files are parsed and indexed automatically after upload."
+        description="Files are validated, encrypted, and parsed automatically after upload."
       >
-        <DocumentUpload onFilesSelected={handleFilesSelected} />
+        <DocumentUpload
+          onSuccess={() => {
+            setUploadOpen(false);
+            refetch();
+          }}
+        />
       </Modal>
+
+      {/* Document Details Drawer / Modal */}
+      <DocumentDetailsModal
+        document={selectedDocument}
+        onClose={() => setSelectedDocument(null)}
+        onRefresh={() => {
+          refetch();
+        }}
+      />
     </div>
   );
 }
