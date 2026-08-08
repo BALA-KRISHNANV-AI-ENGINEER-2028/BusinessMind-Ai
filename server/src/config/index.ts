@@ -81,7 +81,7 @@ export const config = Object.freeze({
 
   server: {
     port: optionalEnvInt('PORT', 8000),
-    host: optionalEnv('HOST', 'localhost'),
+    host: optionalEnv('HOST', '0.0.0.0'),
   },
 
   database: {
