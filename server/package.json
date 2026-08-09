@@ -10,6 +10,7 @@
     "dev": "nodemon",
     "build": "tsc --project tsconfig.json",
     "start": "node dist/server.js",
+    "seed:developer": "ts-node -r tsconfig-paths/register src/scripts/seedDeveloperAccount.ts",
     "lint": "tsc --noEmit",
     "clean": "rimraf dist"
   },
