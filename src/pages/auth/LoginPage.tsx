@@ -8,31 +8,31 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../hooks/useToast';
 
 export function LoginPage() {
-  const [email, setEmail] = useState('alex@businessmind.ai');
-  const [password, setPassword] = useState('••••••••••••');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const { login, loginWithGoogle, isLoading } = useAuth();
   const navigate = useNavigate();
   const { showToast } = useToast();
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    if (!email || !password) {
+      showToast({ title: 'Please enter your email and password', variant: 'danger' });
+      return;
+    }
     try {
-      await login(email);
+      await login(email, password);
       showToast({ title: 'Signed in successfully', variant: 'success' });
       navigate('/');
     } catch {
-      showToast({ title: 'Sign in failed', variant: 'danger' });
+      showToast({ title: 'Sign in failed. Check your credentials.', variant: 'danger' });
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    try {
-      await loginWithGoogle();
-      showToast({ title: 'Signed in with Google', variant: 'success' });
-      navigate('/');
-    } catch {
-      showToast({ title: 'Google authentication failed', variant: 'danger' });
-    }
+  const handleGoogleSignIn = () => {
+    // Redirects the browser to the backend OAuth initiation endpoint.
+    // The page will navigate away — no async needed here.
+    loginWithGoogle();
   };
 
   return (
@@ -85,6 +85,7 @@ export function LoginPage() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
             required
           />
           <Input
@@ -92,6 +93,7 @@ export function LoginPage() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            placeholder="Enter your password"
             required
           />
         </CardContent>

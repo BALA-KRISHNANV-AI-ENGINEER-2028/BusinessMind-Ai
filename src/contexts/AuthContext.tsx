@@ -2,19 +2,25 @@
  * Production Auth Context Provider.
  *
  * Connects frontend state to real backend Auth API endpoints while providing
- * automatic session persistence, expiration checking, and fallback mock capabilities.
+ * automatic session persistence and expiration checking.
+ *
+ * ── Rules ──────────────────────────────────────────────────────────────────
+ * - No mock/dummy fallbacks. An API failure is a real error.
+ * - Initial state is null (unauthenticated) when localStorage is empty.
+ * - Google OAuth is handled via backend redirect flow (loginWithGoogle
+ *   redirects the browser; state is set by OAuthCallbackPage on return).
  */
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { AuthSession, AuthState } from '../types/auth';
-import { mockSession } from '../mocks/auth.mock';
 import { authApi } from '../services/auth.api';
 
 interface AuthContextValue extends AuthState {
-  login: (email: string, password?: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, fullName: string, organizationName?: string) => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
+  loginWithGoogle: () => void;
+  setSessionFromCallback: (session: AuthSession) => void;
   logout: () => void;
   checkSessionExpiration: () => boolean;
 }
@@ -29,14 +35,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored) as AuthSession;
+        // Only restore session if it has not expired
         if (parsed.expiresAt > Date.now()) {
           return parsed;
         }
+        // Expired session — clear it
+        localStorage.removeItem(STORAGE_KEY);
       }
     } catch (e) {
       console.warn('Failed to parse auth session from localStorage', e);
+      localStorage.removeItem(STORAGE_KEY);
     }
-    return mockSession;
+    // No valid session in storage → start unauthenticated
+    return null;
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -59,20 +70,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return false;
   };
 
-  const login = async (email: string, password = 'SecurePassword123!') => {
+  const login = async (email: string, password: string) => {
     setIsLoading(true);
     setError(null);
     try {
       const realSession = await authApi.login({ email, password });
       setSession(realSession);
     } catch (err) {
-      setError((err as Error).message);
-      // Fallback for preview mode
-      setSession({
-        ...mockSession,
-        user: { ...mockSession.user, email, fullName: email.split('@')[0].replace('.', ' ') },
-        expiresAt: Date.now() + 24 * 60 * 60 * 1000,
-      });
+      const message = (err as Error).message || 'Login failed';
+      setError(message);
+      throw err;
     } finally {
       setIsLoading(false);
     }
@@ -92,26 +99,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const loginWithGoogle = async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const googleSession = await authApi.loginWithGoogle();
-      setSession(googleSession);
-    } catch (err) {
-      setError((err as Error).message);
-      setSession({
-        ...mockSession,
-        user: {
-          ...mockSession.user,
-          email: 'alex.rivera.google@businessmind.ai',
-          fullName: 'Alex Rivera (Google)',
-        },
-        expiresAt: Date.now() + 24 * 60 * 60 * 1000,
-      });
-    } finally {
-      setIsLoading(false);
-    }
+  /**
+   * Redirects the browser to the backend Google OAuth initiation endpoint.
+   * The backend handles the full OAuth flow and redirects back to
+   * /auth/callback with the session token, which OAuthCallbackPage reads.
+   */
+  const loginWithGoogle = () => {
+    authApi.initiateGoogleOAuth();
+  };
+
+  /**
+   * Called by OAuthCallbackPage after a successful Google OAuth redirect.
+   * Sets the session in context and localStorage.
+   */
+  const setSessionFromCallback = (newSession: AuthSession) => {
+    setSession(newSession);
   };
 
   const logout = () => {
@@ -130,6 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       register,
       loginWithGoogle,
+      setSessionFromCallback,
       logout,
       checkSessionExpiration,
     }),

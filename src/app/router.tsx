@@ -47,6 +47,9 @@ const LoginPage = lazy(() =>
 const SessionExpiredPage = lazy(() =>
   import('../pages/auth/SessionExpiredPage').then((m) => ({ default: m.SessionExpiredPage })),
 );
+const OAuthCallbackPage = lazy(() =>
+  import('../pages/auth/OAuthCallbackPage').then((m) => ({ default: m.OAuthCallbackPage })),
+);
 const NotFoundPage = lazy(() =>
   import('../pages/errors/NotFoundPage').then((m) => ({ default: m.NotFoundPage })),
 );
@@ -89,6 +92,15 @@ export const router = createBrowserRouter([
             element: (
               <Suspense fallback={<PageFallback />}>
                 <SessionExpiredPage />
+              </Suspense>
+            ),
+          },
+          {
+            // Receives token from backend after Google OAuth
+            path: '/auth/callback',
+            element: (
+              <Suspense fallback={<PageFallback />}>
+                <OAuthCallbackPage />
               </Suspense>
             ),
           },

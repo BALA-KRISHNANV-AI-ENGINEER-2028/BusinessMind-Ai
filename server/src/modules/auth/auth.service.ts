@@ -4,13 +4,15 @@
  * Full production implementation for:
  * - register: Create user, org, owner membership, session & issue JWTs
  * - login: Validate credentials, locate org membership, create session & issue JWTs
- * - googleOAuth: OAuth 2.0 authentication architecture
+ * - googleInitiateOAuth: Generate Google authorization URL
+ * - googleCallback: Exchange OAuth code for tokens, verify identity, find/create user
  * - refresh: Verify refresh token & rotate tokens within tokenFamily
  * - logout: Revoke active session
  * - getMe: Get current user session details
  */
 
 import { v4 as uuidv4 } from 'uuid';
+import { OAuth2Client } from 'google-auth-library';
 import { userRepository } from '../../repositories/user.repository';
 import { organizationRepository } from '../../repositories/organization.repository';
 import { sessionRepository } from '../../repositories/session.repository';
@@ -28,12 +30,12 @@ import {
   ValidationError,
 } from '../../errors/HttpErrors';
 import { ROLE_PERMISSIONS, ROLES, TOKEN_TTL } from '../../constants/app.constants';
+import { config } from '../../config';
 import type {
   AuthSessionResponse,
   LoginDto,
   RegisterDto,
   RefreshTokenDto,
-  GoogleOAuthDto,
   User,
 } from '../../types/auth.types';
 
@@ -230,48 +232,132 @@ export class AuthService {
   }
 
   /**
-   * Google OAuth authentication integration architecture.
+   * Generates the Google OAuth authorization URL.
+   * The browser is redirected here to start the OAuth flow.
+   * Throws a configuration error if Google credentials are not set.
    */
-  async googleOAuth(data: GoogleOAuthDto, meta?: { ip?: string; userAgent?: string }): Promise<AuthSessionResponse> {
-    // Demo / Google token exchange payload architecture
-    const email = 'alex.rivera.google@businessmind.ai';
-    const fullName = 'Alex Rivera (Google)';
-    const googleId = 'google-109283749218';
+  googleInitiateOAuth(): string {
+    if (!config.google.clientId || !config.google.clientSecret || !config.google.callbackUrl) {
+      throw new Error(
+        'Google OAuth is not configured. ' +
+        'Set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_CALLBACK_URL environment variables.',
+      );
+    }
 
+    const client = new OAuth2Client(
+      config.google.clientId,
+      config.google.clientSecret,
+      config.google.callbackUrl,
+    );
+
+    const url = client.generateAuthUrl({
+      access_type: 'offline',
+      scope: ['email', 'profile', 'openid'],
+      prompt: 'select_account',
+    });
+
+    return url;
+  }
+
+  /**
+   * Handles the Google OAuth callback.
+   * Exchanges the authorization code for tokens, verifies identity,
+   * finds or creates the user in MongoDB, and issues JWTs.
+   */
+  async googleCallback(code: string, meta?: { ip?: string; userAgent?: string }): Promise<AuthSessionResponse> {
+    if (!config.google.clientId || !config.google.clientSecret || !config.google.callbackUrl) {
+      throw new Error(
+        'Google OAuth is not configured. ' +
+        'Set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_CALLBACK_URL environment variables.',
+      );
+    }
+
+    const client = new OAuth2Client(
+      config.google.clientId,
+      config.google.clientSecret,
+      config.google.callbackUrl,
+    );
+
+    // Exchange authorization code for tokens
+    let tokens;
+    try {
+      const tokenResponse = await client.getToken(code);
+      tokens = tokenResponse.tokens;
+    } catch {
+      throw new UnauthorizedError('Failed to exchange Google authorization code. The code may be expired or invalid.');
+    }
+
+    if (!tokens.id_token) {
+      throw new UnauthorizedError('Google did not return an ID token.');
+    }
+
+    // Verify the ID token and extract the user's identity
+    let googlePayload;
+    try {
+      const ticket = await client.verifyIdToken({
+        idToken: tokens.id_token,
+        audience: config.google.clientId,
+      });
+      googlePayload = ticket.getPayload();
+    } catch {
+      throw new UnauthorizedError('Failed to verify Google ID token.');
+    }
+
+    if (!googlePayload || !googlePayload.email) {
+      throw new UnauthorizedError('Google account did not provide an email address.');
+    }
+
+    const email = googlePayload.email.toLowerCase().trim();
+    const fullName = googlePayload.name || email.split('@')[0];
+    const googleId = googlePayload.sub;
+    const avatarUrl = googlePayload.picture;
+
+    // Find existing user by email or googleId
     let record = await userRepository.findByEmail(email);
     let user: User;
 
     if (!record) {
-      const orgId = uuidv4();
-      const org = await organizationRepository.create({
-        id: orgId,
-        name: "Alex Rivera's Org",
-        slug: `alex-rivera-org-${uuidv4().slice(0, 6)}`,
-        plan: 'pro',
-        status: 'active',
-        settings: { allowedDomains: [], maxMembers: 50, mfaRequired: false },
-      });
+      // Also try by googleId (in case email changed)
+      const byGoogleId = await userRepository.findByGoogleId(googleId);
+      if (byGoogleId) {
+        user = byGoogleId;
+      } else {
+        // New user — create organization and user
+        const orgId = uuidv4();
+        const orgName = `${fullName.trim()}'s Workspace`;
+        const orgSlug = `${orgName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${uuidv4().slice(0, 6)}`;
 
-      user = await userRepository.create({
-        id: uuidv4(),
-        email,
-        fullName,
-        googleId,
-        defaultOrganizationId: org.id,
-        status: 'active',
-        preferences: {
-          timezone: 'America/New_York',
-          language: 'en-US',
-          emailNotifications: true,
-          marketingEmails: false,
-        },
-      });
+        const org = await organizationRepository.create({
+          id: orgId,
+          name: orgName,
+          slug: orgSlug,
+          plan: 'pro',
+          status: 'active',
+          settings: { allowedDomains: [], maxMembers: 50, mfaRequired: false },
+        });
 
-      await organizationRepository.addMember({
-        organizationId: org.id,
-        userId: user.id,
-        role: ROLES.ORG_ADMIN,
-      });
+        user = await userRepository.create({
+          id: uuidv4(),
+          email,
+          fullName,
+          googleId,
+          avatarUrl,
+          defaultOrganizationId: org.id,
+          status: 'active',
+          preferences: {
+            timezone: 'America/New_York',
+            language: 'en-US',
+            emailNotifications: true,
+            marketingEmails: false,
+          },
+        });
+
+        await organizationRepository.addMember({
+          organizationId: org.id,
+          userId: user.id,
+          role: ROLES.ORG_ADMIN,
+        });
+      }
     } else {
       user = record.user;
     }
@@ -308,11 +394,22 @@ export class AuthService {
       userAgent: meta?.userAgent,
     });
 
+    await auditLogService.log({
+      organizationId: activeOrgId,
+      userId: user.id,
+      action: 'auth.google',
+      resource: 'User',
+      resourceId: user.id,
+      ipAddress: meta?.ip,
+      userAgent: meta?.userAgent,
+    });
+
     return {
       user: {
         id: user.id,
         email: user.email,
         fullName: user.fullName,
+        avatarUrl: user.avatarUrl ?? avatarUrl,
         defaultOrganizationId: activeOrgId,
         preferences: user.preferences,
         createdAt: user.createdAt,

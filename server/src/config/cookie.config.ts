@@ -18,8 +18,10 @@ export const ACCESS_COOKIE_NAME = 'bm_access_token';
 export function getRefreshTokenCookieOptions(): CookieOptions {
   return {
     httpOnly: true,
-    secure: config.isProduction,
-    sameSite: config.isProduction ? 'strict' : 'lax',
+    secure: config.isProduction,   // HTTPS only in production (Render always uses HTTPS)
+    // SameSite=None is required when frontend and backend are on different domains.
+    // In development, Lax is fine (same-site localhost).
+    sameSite: config.isProduction ? 'none' : 'lax',
     maxAge: TOKEN_TTL.REFRESH_TOKEN_MS,
     path: '/api/v1/auth', // Restrict cookie to auth routes only
   };
@@ -32,7 +34,7 @@ export function getClearCookieOptions(): CookieOptions {
   return {
     httpOnly: true,
     secure: config.isProduction,
-    sameSite: config.isProduction ? 'strict' : 'lax',
+    sameSite: config.isProduction ? 'none' : 'lax',
     path: '/api/v1/auth',
   };
 }

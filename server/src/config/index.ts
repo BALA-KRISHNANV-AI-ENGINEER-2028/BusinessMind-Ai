@@ -128,11 +128,13 @@ export const config = Object.freeze({
     prefix: '/api',
   },
 
-  /** Google OAuth — prepared for Phase 5. Values optional in Phase 4. */
+  /** Google OAuth credentials. Required for Google Sign-In to function. */
   google: {
     clientId: process.env['GOOGLE_CLIENT_ID'] ?? '',
     clientSecret: process.env['GOOGLE_CLIENT_SECRET'] ?? '',
     callbackUrl: process.env['GOOGLE_CALLBACK_URL'] ?? '',
+    /** The URL of the deployed frontend — used to redirect after OAuth callback. */
+    frontendUrl: optionalEnv('FRONTEND_URL', 'http://localhost:5173'),
   },
 
   /** Multer file upload settings — prepared for Phase 5. */
