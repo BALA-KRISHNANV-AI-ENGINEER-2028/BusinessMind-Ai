@@ -22,6 +22,7 @@ import { organizationRepository } from '../repositories/organization.repository'
 import { OrganizationMemberModel } from '../models/organization-member.model';
 import { hashPassword } from '../utils/password.util';
 import { ROLES } from '../constants/app.constants';
+import { logger } from '../config/logger.config';
 
 const DEV_EMAIL = 'developer@businessmind-ai.com';
 const DEV_FULL_NAME = 'BusinessMind Developer';
@@ -54,78 +55,33 @@ function validateDeveloperPassword(password: string): void {
   }
 }
 
-export async function seedDeveloperAccount(): Promise<void> {
-  // 1. Read DEVELOPER_PASSWORD from environment (no fallback default allowed)
-  const plainPassword = process.env['DEVELOPER_PASSWORD'];
+export interface BootstrapOptions {
+  throwOnMissingPassword?: boolean;
+}
 
-  if (!plainPassword) {
-    throw new Error(
-      'DEVELOPER_PASSWORD environment variable is required to seed the developer account.',
-    );
-  }
+/**
+ * Idempotently creates or verifies the developer account in MongoDB Atlas.
+ * Operates on an existing MongoDB connection without closing it.
+ */
+export async function bootstrapDeveloperAccount(
+  options: BootstrapOptions = {},
+): Promise<void> {
+  const existingRecord = await userRepository.findByEmail(DEV_EMAIL);
 
-  // 2. Validate password strength before connecting to database
-  validateDeveloperPassword(plainPassword);
+  if (existingRecord) {
+    logger.info({ email: DEV_EMAIL }, 'Developer account already exists. Verifying status...');
 
-  console.log('Connecting to MongoDB Atlas...');
-  await connectDatabase();
+    const { user, doc } = existingRecord;
 
-  try {
-    const existingRecord = await userRepository.findByEmail(DEV_EMAIL);
+    // Ensure user status is active
+    if (doc.status !== 'active') {
+      doc.status = 'active';
+      await doc.save();
+    }
 
-    if (existingRecord) {
-      console.log('Developer account already exists.');
-
-      const { user, doc } = existingRecord;
-
-      // Ensure user status is active
-      if (doc.status !== 'active') {
-        doc.status = 'active';
-        await doc.save();
-      }
-
-      // Check organization membership
-      let orgId = user.defaultOrganizationId;
-      if (!orgId) {
-        let org = await organizationRepository.findBySlug(DEV_ORG_SLUG);
-        if (!org) {
-          org = await organizationRepository.create({
-            id: uuidv4(),
-            name: DEV_ORG_NAME,
-            slug: DEV_ORG_SLUG,
-            plan: 'enterprise',
-            status: 'active',
-            settings: { allowedDomains: [], maxMembers: 100, mfaRequired: false },
-          });
-        }
-        orgId = org.id;
-        doc.defaultOrganizationId = orgId;
-        await doc.save();
-      }
-
-      // Ensure membership exists with SUPER_ADMIN role
-      const existingMembership = await OrganizationMemberModel.findOne({
-        organizationId: orgId,
-        userId: user.id,
-        deletedAt: null,
-      }).exec();
-
-      if (!existingMembership) {
-        await organizationRepository.addMember({
-          organizationId: orgId,
-          userId: user.id,
-          role: ROLES.SUPER_ADMIN,
-          status: 'active',
-        });
-      } else if (existingMembership.role !== ROLES.SUPER_ADMIN || existingMembership.status !== 'active') {
-        existingMembership.role = ROLES.SUPER_ADMIN;
-        existingMembership.status = 'active';
-        await existingMembership.save();
-      }
-
-      console.log('Developer account verified.');
-    } else {
-      // Create Organization
+    // Check organization membership
+    let orgId = user.defaultOrganizationId;
+    if (!orgId) {
       let org = await organizationRepository.findBySlug(DEV_ORG_SLUG);
       if (!org) {
         org = await organizationRepository.create({
@@ -137,37 +93,113 @@ export async function seedDeveloperAccount(): Promise<void> {
           settings: { allowedDomains: [], maxMembers: 100, mfaRequired: false },
         });
       }
+      orgId = org.id;
+      doc.defaultOrganizationId = orgId;
+      await doc.save();
+    }
 
-      // Hash password securely with existing bcrypt utility
-      const passwordHash = await hashPassword(plainPassword);
+    // Ensure membership exists with SUPER_ADMIN role
+    const existingMembership = await OrganizationMemberModel.findOne({
+      organizationId: orgId,
+      userId: user.id,
+      deletedAt: null,
+    }).exec();
 
-      // Create User
-      const user = await userRepository.create({
-        id: uuidv4(),
-        email: DEV_EMAIL,
-        passwordHash,
-        fullName: DEV_FULL_NAME,
-        jobTitle: 'Lead Systems Developer & Admin',
-        defaultOrganizationId: org.id,
-        status: 'active',
-        preferences: {
-          timezone: 'America/New_York',
-          language: 'en-US',
-          emailNotifications: true,
-          marketingEmails: false,
-        },
-      });
-
-      // Add Org Admin / Super Admin Member
+    if (!existingMembership) {
       await organizationRepository.addMember({
-        organizationId: org.id,
+        organizationId: orgId,
         userId: user.id,
         role: ROLES.SUPER_ADMIN,
         status: 'active',
       });
-
-      console.log('Developer account created successfully.');
+    } else if (
+      existingMembership.role !== ROLES.SUPER_ADMIN ||
+      existingMembership.status !== 'active'
+    ) {
+      existingMembership.role = ROLES.SUPER_ADMIN;
+      existingMembership.status = 'active';
+      await existingMembership.save();
     }
+
+    logger.info({ email: DEV_EMAIL }, 'Developer account verified successfully.');
+    return;
+  }
+
+  // Developer account does NOT exist — requires DEVELOPER_PASSWORD
+  const plainPassword = process.env['DEVELOPER_PASSWORD'];
+
+  if (!plainPassword) {
+    const errorMsg =
+      'DEVELOPER_PASSWORD environment variable is required to create developer account, but was not found.';
+    logger.error({ email: DEV_EMAIL }, errorMsg);
+    if (options.throwOnMissingPassword) {
+      throw new Error(errorMsg);
+    }
+    return;
+  }
+
+  // Validate password strength before creation
+  try {
+    validateDeveloperPassword(plainPassword);
+  } catch (err) {
+    const errorMsg = (err as Error).message;
+    logger.error({ email: DEV_EMAIL }, `Invalid DEVELOPER_PASSWORD: ${errorMsg}`);
+    if (options.throwOnMissingPassword) {
+      throw err;
+    }
+    return;
+  }
+
+  // Create Organization if missing
+  let org = await organizationRepository.findBySlug(DEV_ORG_SLUG);
+  if (!org) {
+    org = await organizationRepository.create({
+      id: uuidv4(),
+      name: DEV_ORG_NAME,
+      slug: DEV_ORG_SLUG,
+      plan: 'enterprise',
+      status: 'active',
+      settings: { allowedDomains: [], maxMembers: 100, mfaRequired: false },
+    });
+  }
+
+  // Hash password securely with existing bcrypt utility
+  const passwordHash = await hashPassword(plainPassword);
+
+  // Create User
+  const user = await userRepository.create({
+    id: uuidv4(),
+    email: DEV_EMAIL,
+    passwordHash,
+    fullName: DEV_FULL_NAME,
+    jobTitle: 'Lead Systems Developer & Admin',
+    defaultOrganizationId: org.id,
+    status: 'active',
+    preferences: {
+      timezone: 'America/New_York',
+      language: 'en-US',
+      emailNotifications: true,
+      marketingEmails: false,
+    },
+  });
+
+  // Add Org Admin / Super Admin Member
+  await organizationRepository.addMember({
+    organizationId: org.id,
+    userId: user.id,
+    role: ROLES.SUPER_ADMIN,
+    status: 'active',
+  });
+
+  logger.info({ email: DEV_EMAIL }, 'Developer account created successfully.');
+}
+
+export async function seedDeveloperAccount(): Promise<void> {
+  console.log('Connecting to MongoDB Atlas...');
+  await connectDatabase();
+
+  try {
+    await bootstrapDeveloperAccount({ throwOnMissingPassword: true });
   } finally {
     await disconnectDatabase();
     console.log('MongoDB connection closed.');
@@ -183,3 +215,4 @@ if (require.main === module) {
       process.exit(1);
     });
 }
+

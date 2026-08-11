@@ -18,6 +18,7 @@
 
 import { createApp } from './app';
 import { connectDatabase, disconnectDatabase } from './lib/database';
+import { bootstrapDeveloperAccount } from './scripts/seedDeveloperAccount';
 import { config } from './config/index';
 import { logger } from './config/logger.config';
 import { APP } from './constants/app.constants';
@@ -42,7 +43,16 @@ async function bootstrap(): Promise<void> {
     process.exit(1);
   }
 
-  // 3. Start HTTP server
+  // 3. Idempotently bootstrap Developer / Admin account in production
+  if (config.isProduction) {
+    try {
+      await bootstrapDeveloperAccount();
+    } catch (err) {
+      logger.error({ err }, '⚠️ Error during production developer account bootstrap.');
+    }
+  }
+
+  // 4. Start HTTP server
   const server: Server = app.listen(config.server.port, config.server.host, () => {
     logger.info(
       {
