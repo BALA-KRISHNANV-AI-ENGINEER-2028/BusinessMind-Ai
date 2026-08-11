@@ -6,11 +6,14 @@ const statusVariants: Record<string, { variant: BadgeVariant; label: string }> =
   UPLOADED: { variant: 'accent', label: 'Uploaded' },
   VALIDATING: { variant: 'accent', label: 'Validating' },
   PROCESSING: { variant: 'accent', label: 'Processing' },
-  READY: { variant: 'success', label: 'Ready' },
+  READY: { variant: 'success', label: 'Extracted' },
+  CHUNKING: { variant: 'accent', label: 'Chunking' },
+  EMBEDDING: { variant: 'accent', label: 'Embedding' },
+  EMBEDDED: { variant: 'success', label: 'Indexed (Vector)' },
   FAILED: { variant: 'danger', label: 'Failed' },
   DELETED: { variant: 'neutral', label: 'Deleted' },
   // Fallbacks
-  processed: { variant: 'success', label: 'Ready' },
+  processed: { variant: 'success', label: 'Indexed' },
   processing: { variant: 'accent', label: 'Processing' },
   failed: { variant: 'danger', label: 'Failed' },
 };

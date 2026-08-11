@@ -15,4 +15,5 @@ export * from './notification.model';
 export * from './knowledge-base.model';
 export * from './document.model';
 export * from './document-version.model';
+export * from './document-chunk.model';
 

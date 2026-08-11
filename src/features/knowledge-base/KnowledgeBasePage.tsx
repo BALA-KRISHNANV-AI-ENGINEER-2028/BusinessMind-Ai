@@ -80,10 +80,19 @@ export function KnowledgeBasePage() {
         title="Knowledge Base"
         description="Logical business knowledge collections organizing source documents."
         actions={
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus size={16} aria-hidden="true" />
-            New Knowledge Base
-          </Button>
+          <div className="flex items-center gap-2">
+            <a
+              href="/retrieval"
+              className="px-3 py-1.5 rounded-md border border-indigo-500/30 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              RAG Evidence Search
+            </a>
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus size={16} aria-hidden="true" />
+              New Knowledge Base
+            </Button>
+          </div>
         }
       />
 

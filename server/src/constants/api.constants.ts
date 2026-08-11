@@ -36,6 +36,7 @@ export const API_ROUTES = {
   ANALYTICS: '/analytics',
   CHAT: '/chat',
   SETTINGS: '/settings',
+  RETRIEVAL: '/retrieval',
 } as const;
 
 export type ApiRoute = (typeof API_ROUTES)[keyof typeof API_ROUTES];

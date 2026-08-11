@@ -39,6 +39,10 @@ const SettingsPage = lazy(() =>
 const ProfilePage = lazy(() =>
   import('../features/profile/ProfilePage').then((m) => ({ default: m.ProfilePage })),
 );
+const RetrievalPage = lazy(() =>
+  import('../features/retrieval/RetrievalPage').then((m) => ({ default: m.RetrievalPage })),
+);
+
 
 // Auth & Error Pages
 const LoginPage = lazy(() =>
@@ -166,7 +170,16 @@ export const router = createBrowserRouter([
             ),
           },
           {
+            path: 'retrieval',
+            element: (
+              <Suspense fallback={<PageFallback />}>
+                <RetrievalPage />
+              </Suspense>
+            ),
+          },
+          {
             path: 'organizations',
+
             element: (
               <Suspense fallback={<PageFallback />}>
                 <OrganizationsPage />

@@ -13,7 +13,14 @@ export const DOCUMENT_PROCESSING_STATUS = {
   UPLOADED: 'UPLOADED',
   VALIDATING: 'VALIDATING',
   PROCESSING: 'PROCESSING',
+  /** Text extraction complete — ready for Phase 7 RAG ingestion. */
   READY: 'READY',
+  /** Phase 7: Chunks are being created from extracted text. */
+  CHUNKING: 'CHUNKING',
+  /** Phase 7: Vector embeddings are being generated for chunks. */
+  EMBEDDING: 'EMBEDDING',
+  /** Phase 7: All chunks are embedded and the document is retrieval-ready. */
+  EMBEDDED: 'EMBEDDED',
   FAILED: 'FAILED',
   DELETED: 'DELETED',
 } as const;
@@ -46,15 +53,34 @@ export const ALLOWED_STATUS_TRANSITIONS: Record<
     DOCUMENT_PROCESSING_STATUS.DELETED,
   ],
   [DOCUMENT_PROCESSING_STATUS.READY]: [
-    DOCUMENT_PROCESSING_STATUS.PROCESSING, // re-processing
+    DOCUMENT_PROCESSING_STATUS.PROCESSING,  // re-process content extraction
+    DOCUMENT_PROCESSING_STATUS.CHUNKING,    // Phase 7: begin RAG ingestion
     DOCUMENT_PROCESSING_STATUS.DELETED,
   ],
+  // ─── Phase 7 RAG States ───────────────────────────────────────────────────
+  [DOCUMENT_PROCESSING_STATUS.CHUNKING]: [
+    DOCUMENT_PROCESSING_STATUS.EMBEDDING,   // chunking succeeded
+    DOCUMENT_PROCESSING_STATUS.FAILED,
+    DOCUMENT_PROCESSING_STATUS.DELETED,
+  ],
+  [DOCUMENT_PROCESSING_STATUS.EMBEDDING]: [
+    DOCUMENT_PROCESSING_STATUS.EMBEDDED,    // all embeddings completed
+    DOCUMENT_PROCESSING_STATUS.FAILED,
+    DOCUMENT_PROCESSING_STATUS.DELETED,
+  ],
+  [DOCUMENT_PROCESSING_STATUS.EMBEDDED]: [
+    DOCUMENT_PROCESSING_STATUS.CHUNKING,    // reindex
+    DOCUMENT_PROCESSING_STATUS.PROCESSING,  // full reprocess
+    DOCUMENT_PROCESSING_STATUS.DELETED,
+  ],
+  // ─────────────────────────────────────────────────────────────────────────
   [DOCUMENT_PROCESSING_STATUS.FAILED]: [
-    DOCUMENT_PROCESSING_STATUS.PROCESSING, // retry processing
+    DOCUMENT_PROCESSING_STATUS.PROCESSING,  // retry content extraction
+    DOCUMENT_PROCESSING_STATUS.CHUNKING,    // retry RAG ingestion from chunking
     DOCUMENT_PROCESSING_STATUS.DELETED,
   ],
   [DOCUMENT_PROCESSING_STATUS.DELETED]: [
-    DOCUMENT_PROCESSING_STATUS.READY, // restore
+    DOCUMENT_PROCESSING_STATUS.READY,       // restore
   ],
 };
 

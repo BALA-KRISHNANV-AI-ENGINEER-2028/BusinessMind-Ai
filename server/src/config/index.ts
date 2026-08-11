@@ -153,7 +153,75 @@ export const config = Object.freeze({
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     ] as const,
   },
+
+  /**
+   * Phase 7 — RAG Foundation configuration.
+   * All values are sourced from environment variables with safe defaults.
+   */
+  rag: {
+    // ─── Embedding Provider ───────────────────────────────────────────────────
+    /**
+     * Embedding provider selection.
+     * "openai" = production (requires EMBEDDING_API_KEY)
+     * "mock"   = development / testing (no API key required)
+     */
+    embeddingProvider: optionalEnv('EMBEDDING_PROVIDER', 'mock'),
+
+    /**
+     * Embedding model name.
+     * Default: text-embedding-3-small (1536 dims, $0.020/M tokens)
+     */
+    embeddingModel: optionalEnv('EMBEDDING_MODEL', 'text-embedding-3-small'),
+
+    /**
+     * Number of dimensions in the output embedding vector.
+     * MUST match the numDimensions configured in the Atlas Vector Search index.
+     * Changing this after index creation requires dropping and recreating the index.
+     */
+    embeddingDimensions: parseInt(optionalEnv('EMBEDDING_DIMENSIONS', '1536'), 10),
+
+    /**
+     * API key for the selected embedding provider.
+     * Server-side only — NEVER exposed to the browser.
+     */
+    embeddingApiKey: optionalEnv('EMBEDDING_API_KEY', ''),
+
+    // ─── Chunking ─────────────────────────────────────────────────────────────
+    /**
+     * Target chunk size in characters.
+     * Default: 1000 (~250 tokens). Rationale: fits OpenAI 8191-token limit,
+     * provides meaningful context per chunk, balanced chunk count.
+     */
+    chunkSize: parseInt(optionalEnv('CHUNK_SIZE', '1000'), 10),
+
+    /**
+     * Character overlap between adjacent chunks.
+     * Default: 200 (~20% of 1000). Preserves boundary context.
+     */
+    chunkOverlap: parseInt(optionalEnv('CHUNK_OVERLAP', '200'), 10),
+
+    // ─── Retrieval ─────────────────────────────────────────────────────────────
+    /**
+     * Default number of chunks to return per retrieval query.
+     * Can be overridden per-request (max: 20).
+     */
+    retrievalTopK: parseInt(optionalEnv('RETRIEVAL_TOP_K', '5'), 10),
+
+    /**
+     * Minimum cosine similarity score for retrieved chunks (0.0–1.0).
+     * Default: 0.70 — empirically good balance between precision and recall
+     * for business documents. Below 0.5 is usually noise; above 0.85 is too strict.
+     */
+    retrievalMinScore: parseFloat(optionalEnv('RETRIEVAL_MIN_SCORE', '0.70')),
+
+    /**
+     * Name of the MongoDB Atlas Vector Search index on the documentchunks collection.
+     * Must match the index created in Atlas UI (see ATLAS_VECTOR_INDEX.md).
+     */
+    vectorIndexName: optionalEnv('VECTOR_INDEX_NAME', 'document_chunk_vector_index'),
+  },
 });
+
 
 // ─── Type Export ──────────────────────────────────────────────────────────────
 
