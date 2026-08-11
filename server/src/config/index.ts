@@ -133,8 +133,15 @@ export const config = Object.freeze({
     clientId: process.env['GOOGLE_CLIENT_ID'] ?? '',
     clientSecret: process.env['GOOGLE_CLIENT_SECRET'] ?? '',
     callbackUrl: process.env['GOOGLE_CALLBACK_URL'] ?? '',
-    /** The URL of the deployed frontend — used to redirect after OAuth callback. */
-    frontendUrl: optionalEnv('FRONTEND_URL', 'http://localhost:5173'),
+    /**
+     * The URL of the deployed frontend — used to redirect after OAuth callback.
+     * Required in production: if missing the server intentionally fails fast
+     * rather than silently redirecting OAuth users to localhost:5173.
+     */
+    frontendUrl:
+      nodeEnv === 'production'
+        ? requireEnv('FRONTEND_URL')
+        : optionalEnv('FRONTEND_URL', 'http://localhost:5173'),
   },
 
   /** Multer file upload settings — prepared for Phase 5. */

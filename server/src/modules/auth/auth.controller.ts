@@ -15,6 +15,7 @@ import {
   getClearCookieOptions,
 } from '../../config/cookie.config';
 import { config } from '../../config';
+import { logger } from '../../config/logger.config';
 import type { LoginDto, RegisterDto, RefreshTokenDto } from './auth.types';
 
 export const authController = {
@@ -70,7 +71,7 @@ export const authController = {
     const code = req.query['code'] as string | undefined;
     const error = req.query['error'] as string | undefined;
 
-    const frontendUrl = config.google.frontendUrl || 'http://localhost:5173';
+    const frontendUrl = config.google.frontendUrl;
     const callbackPath = '/auth/callback';
 
     // User denied access or Google returned an error
@@ -78,6 +79,7 @@ export const authController = {
       const message = error === 'access_denied'
         ? 'Google sign-in was cancelled.'
         : (error ?? 'Google authentication failed.');
+      logger.warn({ error, hasCode: Boolean(code) }, '[GoogleOAuth] Callback received error or missing code');
       const redirectUrl = `${frontendUrl}${callbackPath}?error=${encodeURIComponent(message)}`;
       res.redirect(redirectUrl);
       return;
@@ -104,6 +106,7 @@ export const authController = {
 
       res.redirect(`${frontendUrl}${callbackPath}?${params.toString()}`);
     } catch (err) {
+      logger.error({ err }, '[GoogleOAuth] Callback processing error');
       const message = err instanceof Error ? err.message : 'Google authentication failed.';
       const redirectUrl = `${frontendUrl}${callbackPath}?error=${encodeURIComponent(message)}`;
       res.redirect(redirectUrl);

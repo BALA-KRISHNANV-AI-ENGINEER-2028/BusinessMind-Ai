@@ -31,6 +31,7 @@ import {
 } from '../../errors/HttpErrors';
 import { ROLE_PERMISSIONS, ROLES, TOKEN_TTL } from '../../constants/app.constants';
 import { config } from '../../config';
+import { logger } from '../../config/logger.config';
 import type {
   AuthSessionResponse,
   LoginDto,
@@ -283,11 +284,13 @@ export class AuthService {
     try {
       const tokenResponse = await client.getToken(code);
       tokens = tokenResponse.tokens;
-    } catch {
+    } catch (err) {
+      logger.error({ err }, '[GoogleOAuth] Failed to exchange authorization code');
       throw new UnauthorizedError('Failed to exchange Google authorization code. The code may be expired or invalid.');
     }
 
     if (!tokens.id_token) {
+      logger.error('[GoogleOAuth] Google response missing id_token');
       throw new UnauthorizedError('Google did not return an ID token.');
     }
 
@@ -299,7 +302,8 @@ export class AuthService {
         audience: config.google.clientId,
       });
       googlePayload = ticket.getPayload();
-    } catch {
+    } catch (err) {
+      logger.error({ err }, '[GoogleOAuth] Failed to verify ID token');
       throw new UnauthorizedError('Failed to verify Google ID token.');
     }
 
