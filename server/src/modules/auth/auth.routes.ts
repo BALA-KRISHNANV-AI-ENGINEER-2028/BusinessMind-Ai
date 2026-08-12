@@ -23,6 +23,7 @@ import {
   registerSchema,
   loginSchema,
   refreshTokenSchema,
+  completeOnboardingSchema,
 } from './auth.validator';
 
 export const authRouter = Router();
@@ -30,6 +31,7 @@ export const authRouter = Router();
 // ── Public routes ─────────────────────────────────────────────────────────────
 authRouter.post('/register', authLimiter, validate(registerSchema), authController.register);
 authRouter.post('/login', authLimiter, validate(loginSchema), authController.login);
+authRouter.post('/onboarding/complete', authLimiter, validate(completeOnboardingSchema), authController.completeOnboarding);
 
 // ── Google OAuth (Authorization Code Flow) ────────────────────────────────────
 // Step 1: Frontend calls this → backend redirects browser to Google

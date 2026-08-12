@@ -13,14 +13,17 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { AuthSession, AuthState } from '../types/auth';
+import type { AuthSession, AuthState, User } from '../types/auth';
 import { authApi } from '../services/auth.api';
+import type { RegisterPayload, CompleteOnboardingPayload } from '../services/auth.api';
 
 interface AuthContextValue extends AuthState {
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, fullName: string, organizationName?: string) => Promise<void>;
+  register: (payload: RegisterPayload) => Promise<void>;
+  completeGoogleOnboarding: (payload: CompleteOnboardingPayload) => Promise<void>;
   loginWithGoogle: () => void;
   setSessionFromCallback: (session: AuthSession) => void;
+  updateUser: (updatedUser: Partial<User>) => void;
   logout: () => void;
   checkSessionExpiration: () => boolean;
 }
@@ -85,11 +88,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (email: string, password: string, fullName: string, organizationName?: string) => {
+  const register = async (payload: RegisterPayload) => {
     setIsLoading(true);
     setError(null);
     try {
-      const newSession = await authApi.register({ email, password, fullName, organizationName });
+      const newSession = await authApi.register(payload);
+      setSession(newSession);
+    } catch (err) {
+      setError((err as Error).message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const completeGoogleOnboarding = async (payload: CompleteOnboardingPayload) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const newSession = await authApi.completeOnboarding(payload);
       setSession(newSession);
     } catch (err) {
       setError((err as Error).message);
@@ -116,6 +133,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(newSession);
   };
 
+  /**
+   * Immediately updates current user object in state and localStorage.
+   */
+  const updateUser = (updatedUser: Partial<User>) => {
+    setSession((prev) => {
+      if (!prev) return null;
+      const updated = {
+        ...prev,
+        user: {
+          ...prev.user,
+          ...updatedUser,
+        },
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  };
+
   const logout = () => {
     void authApi.logout().catch(() => {});
     setSession(null);
@@ -131,8 +166,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       error,
       login,
       register,
+      completeGoogleOnboarding,
       loginWithGoogle,
       setSessionFromCallback,
+      updateUser,
       logout,
       checkSessionExpiration,
     }),

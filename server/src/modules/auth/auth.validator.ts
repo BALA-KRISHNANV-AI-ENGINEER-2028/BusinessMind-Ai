@@ -19,12 +19,44 @@ export const registerSchema = z.object({
     email: emailSchema,
     password: passwordSchema,
     fullName: fullNameSchema,
-    organizationName: z
-      .string()
+    jobTitle: z.string().trim().optional(),
+    phone: z.string().trim().optional(),
+    avatarUrl: z.string().trim().optional(),
+    companyName: z
+      .string({ required_error: 'Company name is required' })
       .trim()
-      .min(2, 'Organisation name must be at least 2 characters')
-      .max(100, 'Organisation name must not exceed 100 characters')
-      .optional(),
+      .min(2, 'Company name must be at least 2 characters')
+      .max(100, 'Company name must not exceed 100 characters')
+      .or(z.string().trim().min(2)),
+    organizationName: z.string().trim().optional(),
+    companyWebsite: z.string().trim().optional(),
+    industry: z.string().trim().optional(),
+    companySize: z.string().trim().optional(),
+    companyDescription: z.string().trim().optional(),
+    country: z.string().trim().optional(),
+    timezone: z.string().trim().optional(),
+  }),
+});
+
+// ─── Complete Onboarding ──────────────────────────────────────────────────────
+
+export const completeOnboardingSchema = z.object({
+  body: z.object({
+    onboardingToken: z.string({ required_error: 'Onboarding token is required' }).min(1),
+    fullName: fullNameSchema,
+    jobTitle: z.string().trim().optional(),
+    phone: z.string().trim().optional(),
+    companyName: z
+      .string({ required_error: 'Company name is required' })
+      .trim()
+      .min(2, 'Company name must be at least 2 characters')
+      .max(100, 'Company name must not exceed 100 characters'),
+    companyWebsite: z.string().trim().optional(),
+    industry: z.string().trim().optional(),
+    companySize: z.string().trim().optional(),
+    companyDescription: z.string().trim().optional(),
+    country: z.string().trim().optional(),
+    timezone: z.string().trim().optional(),
   }),
 });
 

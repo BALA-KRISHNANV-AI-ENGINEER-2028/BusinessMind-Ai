@@ -37,12 +37,25 @@ export function OAuthCallbackPage() {
     async function handleCallback() {
       const error = searchParams.get('error');
       const token = searchParams.get('token');
+      const onboardingToken = searchParams.get('onboardingToken');
       const expiresAt = searchParams.get('expiresAt');
       const parsedExpiresAt = Number(expiresAt);
 
       // Google or backend returned an error
-      if (error || !token || !expiresAt || Number.isNaN(parsedExpiresAt)) {
-        const message = error ?? 'Google sign-in was cancelled or failed.';
+      if (error) {
+        showToast({ title: error, variant: 'danger' });
+        void navigate('/login', { replace: true });
+        return;
+      }
+
+      // Case B: New Google User -> backend sent token to /onboarding
+      if (onboardingToken) {
+        void navigate(`/onboarding?token=${encodeURIComponent(onboardingToken)}`, { replace: true });
+        return;
+      }
+
+      if (!token || !expiresAt || Number.isNaN(parsedExpiresAt)) {
+        const message = 'Google sign-in was cancelled or failed.';
         showToast({ title: message, variant: 'danger' });
         void navigate('/login', { replace: true });
         return;

@@ -5,8 +5,9 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '../../comp
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { Avatar } from '../../components/ui/Avatar';
+import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../hooks/useToast';
-import { defaultProfileData } from '../../mocks/profile.mock';
+import { authApi } from '../../services/auth.api';
 
 const profileSchema = z.object({
   fullName: z.string().min(2, 'Name must be at least 2 characters'),
@@ -19,6 +20,7 @@ const profileSchema = z.object({
 type ProfileFormData = z.infer<typeof profileSchema>;
 
 export function ProfilePage() {
+  const { user, updateUser } = useAuth();
   const { showToast } = useToast();
 
   const {
@@ -28,14 +30,31 @@ export function ProfilePage() {
     formState: { errors, isSubmitting, isDirty },
   } = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
-    defaultValues: defaultProfileData,
+    defaultValues: {
+      fullName: user?.fullName || '',
+      email: user?.email || '',
+      jobTitle: user?.jobTitle || '',
+      phone: user?.phone || '',
+      bio: user?.bio || '',
+    },
   });
 
   const fullName = watch('fullName');
 
-  const onSubmit = async (_data: ProfileFormData) => {
-    await new Promise((r) => setTimeout(r, 500));
-    showToast({ title: 'Profile updated successfully', variant: 'success' });
+  const onSubmit = async (data: ProfileFormData) => {
+    try {
+      const updatedUser = await authApi.updateProfile({
+        fullName: data.fullName,
+        jobTitle: data.jobTitle,
+        phone: data.phone,
+        bio: data.bio,
+      });
+      updateUser(updatedUser);
+      showToast({ title: 'Profile updated successfully', variant: 'success' });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to update profile';
+      showToast({ title: message, variant: 'danger' });
+    }
   };
 
   return (

@@ -10,6 +10,12 @@ export const updateOrganizationSchema = z.object({
     name: z.string().trim().min(2).max(100).optional(),
     domain: z.string().trim().max(100).optional(),
     logoUrl: z.string().url().optional(),
+    website: z.string().trim().optional(),
+    industry: z.string().trim().optional(),
+    companySize: z.string().trim().optional(),
+    description: z.string().trim().optional(),
+    country: z.string().trim().optional(),
+    timezone: z.string().trim().optional(),
   }),
 });
 

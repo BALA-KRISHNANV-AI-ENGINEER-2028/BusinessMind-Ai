@@ -13,6 +13,12 @@ export interface Organization {
   slug: string;
   logoUrl?: string;
   domain?: string;
+  website?: string;
+  industry?: string;
+  companySize?: string;
+  description?: string;
+  country?: string;
+  timezone?: string;
   plan: OrgPlan;
   status?: string;
   memberCount: number;
@@ -49,12 +55,24 @@ export interface CreateOrganizationDto {
   slug?: string;
   domain?: string;
   logoUrl?: string;
+  website?: string;
+  industry?: string;
+  companySize?: string;
+  description?: string;
+  country?: string;
+  timezone?: string;
 }
 
 export interface UpdateOrganizationDto {
   name?: string;
   domain?: string;
   logoUrl?: string;
+  website?: string;
+  industry?: string;
+  companySize?: string;
+  description?: string;
+  country?: string;
+  timezone?: string;
 }
 
 export interface InviteMemberDto {

@@ -70,7 +70,41 @@ export interface RegisterDto {
   email: string;
   password: string;
   fullName: string;
-  organizationName?: string;
+  jobTitle?: string;
+  phone?: string;
+  avatarUrl?: string;
+  companyName: string;
+  organizationName?: string; // Backwards compatibility fallback
+  companyWebsite?: string;
+  industry?: string;
+  companySize?: string;
+  companyDescription?: string;
+  country?: string;
+  timezone?: string;
+}
+
+export interface CompleteOnboardingDto {
+  onboardingToken: string;
+  fullName: string;
+  jobTitle?: string;
+  phone?: string;
+  companyName: string;
+  companyWebsite?: string;
+  industry?: string;
+  companySize?: string;
+  companyDescription?: string;
+  country?: string;
+  timezone?: string;
+}
+
+export interface OnboardingTokenPayload {
+  email: string;
+  googleId: string;
+  fullName: string;
+  avatarUrl?: string;
+  isPendingOnboarding: boolean;
+  iat?: number;
+  exp?: number;
 }
 
 export interface RefreshTokenDto {

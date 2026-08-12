@@ -19,7 +19,30 @@ export interface RegisterPayload {
   email: string;
   password: string;
   fullName: string;
-  organizationName?: string;
+  jobTitle?: string;
+  phone?: string;
+  avatarUrl?: string;
+  companyName: string;
+  companyWebsite?: string;
+  industry?: string;
+  companySize?: string;
+  companyDescription?: string;
+  country?: string;
+  timezone?: string;
+}
+
+export interface CompleteOnboardingPayload {
+  onboardingToken: string;
+  fullName: string;
+  jobTitle?: string;
+  phone?: string;
+  companyName: string;
+  companyWebsite?: string;
+  industry?: string;
+  companySize?: string;
+  companyDescription?: string;
+  country?: string;
+  timezone?: string;
 }
 
 export interface LoginPayload {
@@ -32,6 +55,12 @@ export const authApi = {
     const res = await apiClient.post<AuthSession>('/auth/register', payload);
     if (res.success) return res.data;
     throw new Error(res.message || 'Registration failed');
+  },
+
+  async completeOnboarding(payload: CompleteOnboardingPayload): Promise<AuthSession> {
+    const res = await apiClient.post<AuthSession>('/auth/onboarding/complete', payload);
+    if (res.success) return res.data;
+    throw new Error(res.message || 'Onboarding completion failed');
   },
 
   async login(payload: LoginPayload): Promise<AuthSession> {
@@ -90,5 +119,17 @@ export const authApi = {
     const res = await apiClient.get<AuthSession>('/auth/me');
     if (res.success) return res.data;
     throw new Error(res.message || 'Session inspection failed');
+  },
+
+  async updateProfile(data: { fullName?: string; jobTitle?: string; phone?: string; bio?: string; avatarUrl?: string }): Promise<AuthSession['user']> {
+    const res = await apiClient.patch<AuthSession['user']>('/users/me', data);
+    if (res.success) return res.data;
+    throw new Error(res.message || 'Failed to update profile');
+  },
+
+  async updatePreferences(data: Partial<AuthSession['user']['preferences']>): Promise<AuthSession['user']> {
+    const res = await apiClient.patch<AuthSession['user']>('/users/preferences', data);
+    if (res.success) return res.data;
+    throw new Error(res.message || 'Failed to update preferences');
   },
 };

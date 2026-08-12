@@ -22,6 +22,8 @@ import {
   signAccessToken,
   signRefreshToken,
   verifyRefreshToken,
+  signOnboardingToken,
+  verifyOnboardingToken,
 } from '../../utils/jwt.util';
 import {
   DuplicateKeyError,
@@ -36,9 +38,16 @@ import type {
   AuthSessionResponse,
   LoginDto,
   RegisterDto,
+  CompleteOnboardingDto,
   RefreshTokenDto,
   User,
 } from '../../types/auth.types';
+
+export interface GoogleCallbackResult {
+  onboardingRequired?: boolean;
+  onboardingToken?: string;
+  session?: AuthSessionResponse;
+}
 
 export class AuthService {
   /**
@@ -53,14 +62,20 @@ export class AuthService {
     const passwordHash = await hashPassword(data.password);
     const userId = uuidv4();
     const orgId = uuidv4();
-    const orgName = data.organizationName?.trim() || `${data.fullName.trim()}'s Workspace`;
+    const orgName = data.companyName?.trim() || data.organizationName?.trim() || `${data.fullName.trim()}'s Workspace`;
     const orgSlug = `${orgName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${uuidv4().slice(0, 6)}`;
 
-    // 1. Create Organization
+    // 1. Create Organization with real company details
     const org = await organizationRepository.create({
       id: orgId,
       name: orgName,
       slug: orgSlug,
+      website: data.companyWebsite?.trim() || '',
+      industry: data.industry?.trim() || '',
+      companySize: data.companySize?.trim() || '',
+      description: data.companyDescription?.trim() || '',
+      country: data.country?.trim() || '',
+      timezone: data.timezone?.trim() || 'UTC',
       plan: 'pro',
       status: 'active',
       settings: {
@@ -70,16 +85,19 @@ export class AuthService {
       },
     });
 
-    // 2. Create User
+    // 2. Create User with real profile details
     const user = await userRepository.create({
       id: userId,
       email: data.email.toLowerCase().trim(),
       passwordHash,
       fullName: data.fullName.trim(),
+      jobTitle: data.jobTitle?.trim() || '',
+      phone: data.phone?.trim() || '',
+      avatarUrl: data.avatarUrl?.trim() || '',
       defaultOrganizationId: org.id,
       status: 'active',
       preferences: {
-        timezone: 'America/New_York',
+        timezone: data.timezone?.trim() || 'America/New_York',
         language: 'en-US',
         emailNotifications: true,
         marketingEmails: false,
@@ -139,6 +157,9 @@ export class AuthService {
         id: user.id,
         email: user.email,
         fullName: user.fullName,
+        avatarUrl: user.avatarUrl,
+        jobTitle: user.jobTitle,
+        phone: user.phone,
         defaultOrganizationId: org.id,
         preferences: user.preferences,
         createdAt: user.createdAt,
@@ -262,10 +283,11 @@ export class AuthService {
 
   /**
    * Handles the Google OAuth callback.
-   * Exchanges the authorization code for tokens, verifies identity,
-   * finds or creates the user in MongoDB, and issues JWTs.
+   * Exchanges authorization code for tokens and verifies identity.
+   * - Existing user -> returns AuthSessionResponse
+   * - New user -> returns onboardingToken and flags onboardingRequired = true
    */
-  async googleCallback(code: string, meta?: { ip?: string; userAgent?: string }): Promise<AuthSessionResponse> {
+  async googleCallback(code: string, meta?: { ip?: string; userAgent?: string }): Promise<GoogleCallbackResult> {
     if (!config.google.clientId || !config.google.clientSecret || !config.google.callbackUrl) {
       throw new Error(
         'Google OAuth is not configured. ' +
@@ -318,52 +340,36 @@ export class AuthService {
 
     // Find existing user by email or googleId
     let record = await userRepository.findByEmail(email);
-    let user: User;
+    let user: User | undefined;
 
     if (!record) {
-      // Also try by googleId (in case email changed)
       const byGoogleId = await userRepository.findByGoogleId(googleId);
       if (byGoogleId) {
         user = byGoogleId;
       } else {
-        // New user — create organization and user
-        const orgId = uuidv4();
-        const orgName = `${fullName.trim()}'s Workspace`;
-        const orgSlug = `${orgName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${uuidv4().slice(0, 6)}`;
-
-        const org = await organizationRepository.create({
-          id: orgId,
-          name: orgName,
-          slug: orgSlug,
-          plan: 'pro',
-          status: 'active',
-          settings: { allowedDomains: [], maxMembers: 50, mfaRequired: false },
-        });
-
-        user = await userRepository.create({
-          id: uuidv4(),
+        // Case B: NEW Google User — requires profile & company onboarding!
+        // Do NOT create dummy organization or dummy user in MongoDB.
+        const onboardingToken = signOnboardingToken({
           email,
-          fullName,
           googleId,
+          fullName,
           avatarUrl,
-          defaultOrganizationId: org.id,
-          status: 'active',
-          preferences: {
-            timezone: 'America/New_York',
-            language: 'en-US',
-            emailNotifications: true,
-            marketingEmails: false,
-          },
         });
 
-        await organizationRepository.addMember({
-          organizationId: org.id,
-          userId: user.id,
-          role: ROLES.ORG_ADMIN,
-        });
+        logger.info({ email }, '[GoogleOAuth] New user detected — initiating onboarding flow');
+        return {
+          onboardingRequired: true,
+          onboardingToken,
+        };
       }
     } else {
       user = record.user;
+    }
+
+    // Link googleId to existing user if not already set
+    if (record?.doc && !record.doc.googleId) {
+      record.doc.googleId = googleId;
+      await record.doc.save();
     }
 
     const memberships = await organizationRepository.getUserMemberships(user.id);
@@ -409,12 +415,144 @@ export class AuthService {
     });
 
     return {
+      onboardingRequired: false,
+      session: {
+        user: {
+          id: user.id,
+          email: user.email,
+          fullName: user.fullName,
+          avatarUrl: user.avatarUrl ?? avatarUrl,
+          jobTitle: user.jobTitle,
+          phone: user.phone,
+          bio: user.bio,
+          defaultOrganizationId: activeOrgId,
+          preferences: user.preferences,
+          createdAt: user.createdAt,
+        },
+        token,
+        refreshToken,
+        expiresAt,
+        memberships,
+      },
+    };
+  }
+
+  /**
+   * Completes onboarding for a new Google user using a valid onboardingToken.
+   */
+  async completeOnboarding(
+    data: CompleteOnboardingDto,
+    meta?: { ip?: string; userAgent?: string },
+  ): Promise<AuthSessionResponse> {
+    const onboardingPayload = verifyOnboardingToken(data.onboardingToken);
+
+    const email = onboardingPayload.email.toLowerCase().trim();
+    const existing = await userRepository.findByEmail(email);
+    if (existing) {
+      throw new DuplicateKeyError('email');
+    }
+
+    const userId = uuidv4();
+    const orgId = uuidv4();
+    const orgName = data.companyName.trim();
+    const orgSlug = `${orgName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${uuidv4().slice(0, 6)}`;
+
+    // 1. Create Organization with user-provided company details
+    const org = await organizationRepository.create({
+      id: orgId,
+      name: orgName,
+      slug: orgSlug,
+      website: data.companyWebsite?.trim() || '',
+      industry: data.industry?.trim() || '',
+      companySize: data.companySize?.trim() || '',
+      description: data.companyDescription?.trim() || '',
+      country: data.country?.trim() || '',
+      timezone: data.timezone?.trim() || 'UTC',
+      plan: 'pro',
+      status: 'active',
+      settings: {
+        allowedDomains: [],
+        maxMembers: 50,
+        mfaRequired: false,
+      },
+    });
+
+    // 2. Create User with user-provided profile details & verified Google ID
+    const user = await userRepository.create({
+      id: userId,
+      email,
+      fullName: data.fullName.trim() || onboardingPayload.fullName,
+      googleId: onboardingPayload.googleId,
+      avatarUrl: onboardingPayload.avatarUrl || '',
+      jobTitle: data.jobTitle?.trim() || '',
+      phone: data.phone?.trim() || '',
+      defaultOrganizationId: org.id,
+      status: 'active',
+      preferences: {
+        timezone: data.timezone?.trim() || 'America/New_York',
+        language: 'en-US',
+        emailNotifications: true,
+        marketingEmails: false,
+      },
+    });
+
+    // 3. Add Member as Owner
+    await organizationRepository.addMember({
+      organizationId: org.id,
+      userId: user.id,
+      role: ROLES.ORG_ADMIN,
+    });
+
+    // 4. Issue Tokens & Create Session
+    const tokenFamily = uuidv4();
+    const permissions = ROLE_PERMISSIONS[ROLES.ORG_ADMIN];
+    const { token, expiresAt } = signAccessToken({
+      sub: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      organizationId: org.id,
+      role: ROLES.ORG_ADMIN,
+      permissions,
+    });
+
+    const refreshExpiresAt = new Date(Date.now() + TOKEN_TTL.REFRESH_TOKEN_MS);
+    const refreshToken = signRefreshToken({
+      sub: user.id,
+      email: user.email,
+      family: tokenFamily,
+    });
+
+    await sessionRepository.createSession({
+      userId: user.id,
+      organizationId: org.id,
+      tokenFamily,
+      refreshToken,
+      expiresAt: refreshExpiresAt,
+      ipAddress: meta?.ip,
+      userAgent: meta?.userAgent,
+    });
+
+    await auditLogService.log({
+      organizationId: org.id,
+      userId: user.id,
+      action: 'auth.google_onboarding_complete',
+      resource: 'User',
+      resourceId: user.id,
+      ipAddress: meta?.ip,
+      userAgent: meta?.userAgent,
+    });
+
+    const memberships = await organizationRepository.getUserMemberships(user.id);
+
+    return {
       user: {
         id: user.id,
         email: user.email,
         fullName: user.fullName,
-        avatarUrl: user.avatarUrl ?? avatarUrl,
-        defaultOrganizationId: activeOrgId,
+        avatarUrl: user.avatarUrl,
+        jobTitle: user.jobTitle,
+        phone: user.phone,
+        defaultOrganizationId: org.id,
         preferences: user.preferences,
         createdAt: user.createdAt,
       },

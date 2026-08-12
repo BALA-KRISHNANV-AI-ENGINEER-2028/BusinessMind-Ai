@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
@@ -101,6 +101,12 @@ export function LoginPage() {
           <Button type="submit" className="w-full" loading={isLoading}>
             Sign In
           </Button>
+          <p className="text-xs text-text-secondary text-center mt-2">
+            Don't have an account?{' '}
+            <Link to="/signup" className="font-semibold text-accent hover:underline">
+              Sign up
+            </Link>
+          </p>
         </CardFooter>
       </form>
     </Card>

@@ -40,11 +40,17 @@ export class OrganizationsService {
       name: org.name,
       slug: org.slug,
       domain: org.domain,
+      website: org.website,
+      industry: org.industry,
+      companySize: org.companySize,
+      description: org.description,
+      country: org.country,
+      timezone: org.timezone,
       plan: org.plan as Organization['plan'],
       status: org.status as Organization['status'],
       memberCount: members,
       createdAt: org.createdAt,
-      updatedAt: org.createdAt,
+      updatedAt: org.updatedAt || org.createdAt,
     };
   }
 
@@ -100,6 +106,12 @@ export class OrganizationsService {
     const updated = await organizationRepository.update(orgId, {
       name: data.name ? data.name.trim() : org.name,
       domain: data.domain !== undefined ? data.domain.trim() : org.domain,
+      website: data.website !== undefined ? data.website.trim() : org.website,
+      industry: data.industry !== undefined ? data.industry.trim() : org.industry,
+      companySize: data.companySize !== undefined ? data.companySize.trim() : org.companySize,
+      description: data.description !== undefined ? data.description.trim() : org.description,
+      country: data.country !== undefined ? data.country.trim() : org.country,
+      timezone: data.timezone !== undefined ? data.timezone.trim() : org.timezone,
     });
 
     if (!updated) {

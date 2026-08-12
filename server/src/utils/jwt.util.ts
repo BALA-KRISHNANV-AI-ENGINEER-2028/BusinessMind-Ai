@@ -108,6 +108,31 @@ export function verifyRefreshToken(token: string | undefined): RefreshTokenPaylo
   }
 }
 
+// ─── Sign & Verify Onboarding Token ──────────────────────────────────────────
+
+export function signOnboardingToken(payload: { email: string; googleId: string; fullName: string; avatarUrl?: string }): string {
+  const options: SignOptions = {
+    expiresIn: '30m',
+    issuer: 'businessmind-api',
+    audience: 'businessmind-onboarding',
+  };
+  return jwt.sign({ ...payload, isPendingOnboarding: true }, config.jwt.secret, options);
+}
+
+export function verifyOnboardingToken(token: string): { email: string; googleId: string; fullName: string; avatarUrl?: string; isPendingOnboarding: boolean } {
+  if (!token) throw new TokenMissingError();
+  try {
+    const decoded = jwt.verify(token, config.jwt.secret, {
+      issuer: 'businessmind-api',
+      audience: 'businessmind-onboarding',
+    }) as { email: string; googleId: string; fullName: string; avatarUrl?: string; isPendingOnboarding: boolean };
+    return decoded;
+  } catch (err) {
+    if (err instanceof jwt.TokenExpiredError) throw new TokenExpiredError();
+    throw new TokenInvalidError();
+  }
+}
+
 // ─── Extract Bearer Token ─────────────────────────────────────────────────────
 
 /**

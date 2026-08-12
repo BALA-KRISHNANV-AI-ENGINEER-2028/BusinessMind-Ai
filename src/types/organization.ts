@@ -8,6 +8,12 @@ export interface Organization {
   slug: string;
   logoUrl?: string;
   domain?: string;
+  website?: string;
+  industry?: string;
+  companySize?: string;
+  description?: string;
+  country?: string;
+  timezone?: string;
   plan: 'free' | 'pro' | 'enterprise';
   createdAt: string;
   memberCount: number;

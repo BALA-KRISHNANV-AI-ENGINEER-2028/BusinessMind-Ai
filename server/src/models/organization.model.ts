@@ -21,6 +21,12 @@ export interface IOrganizationDocument extends Document<string> {
   name: string;
   slug: string;
   domain?: string;
+  website?: string;
+  industry?: string;
+  companySize?: string;
+  description?: string;
+  country?: string;
+  timezone?: string;
   plan: OrgPlan;
   status: OrganizationStatus;
   settings: OrganizationSettings;
@@ -52,6 +58,36 @@ const OrganizationSchema = new Schema<IOrganizationDocument>(
       type: String,
       sparse: true,
       lowercase: true,
+      trim: true,
+    },
+    website: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    industry: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    companySize: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    description: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    country: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    timezone: {
+      type: String,
+      default: 'UTC',
       trim: true,
     },
     plan: {

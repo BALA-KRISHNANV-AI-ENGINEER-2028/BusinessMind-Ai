@@ -65,7 +65,8 @@ export const authController = {
   /**
    * GET /api/v1/auth/google/callback
    * Google redirects here after the user authorizes (or denies) access.
-   * Exchanges the code, issues JWTs, sets refresh cookie, redirects to frontend.
+   * - Existing user: Issues JWTs, sets refresh cookie, redirects to /auth/callback
+   * - New user: Issues temporary onboardingToken, redirects to /onboarding?token=...
    */
   googleCallback: asyncHandler(async (req: Request, res: Response) => {
     const code = req.query['code'] as string | undefined;
@@ -86,19 +87,29 @@ export const authController = {
     }
 
     try {
-      const session = await authService.googleCallback(code, {
+      const result = await authService.googleCallback(code, {
         ip: req.ip,
         userAgent: req.headers['user-agent'],
       });
+
+      // Case B: New Google User -> redirect to onboarding
+      if (result.onboardingRequired && result.onboardingToken) {
+        const onboardingUrl = `${frontendUrl}/onboarding?token=${encodeURIComponent(result.onboardingToken)}`;
+        res.redirect(onboardingUrl);
+        return;
+      }
+
+      // Case A: Existing Google User -> complete session
+      const session = result.session;
+      if (!session) {
+        throw new Error('Failed to retrieve authentication session.');
+      }
 
       // Set HTTP-only refresh token cookie
       if (session.refreshToken) {
         res.cookie(REFRESH_COOKIE_NAME, session.refreshToken, getRefreshTokenCookieOptions());
       }
 
-      // Pass access token to frontend via URL params
-      // The OAuthCallbackPage immediately reads these and navigates away,
-      // minimizing the time the token is visible in browser history.
       const params = new URLSearchParams({
         token: session.token,
         expiresAt: String(session.expiresAt),
@@ -111,6 +122,24 @@ export const authController = {
       const redirectUrl = `${frontendUrl}${callbackPath}?error=${encodeURIComponent(message)}`;
       res.redirect(redirectUrl);
     }
+  }),
+
+  /**
+   * POST /api/v1/auth/onboarding/complete
+   * Completes profile and company setup for a new Google OAuth user.
+   */
+  completeOnboarding: asyncHandler(async (req: Request, res: Response) => {
+    const data = req.body;
+    const session = await authService.completeOnboarding(data, {
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
+
+    if (session.refreshToken) {
+      res.cookie(REFRESH_COOKIE_NAME, session.refreshToken, getRefreshTokenCookieOptions());
+    }
+
+    sendCreated(res, session, 'Onboarding completed successfully');
   }),
 
   /**

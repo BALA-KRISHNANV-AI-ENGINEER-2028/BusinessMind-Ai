@@ -14,6 +14,12 @@ export interface OrganizationEntity {
   name: string;
   slug: string;
   domain?: string;
+  website?: string;
+  industry?: string;
+  companySize?: string;
+  description?: string;
+  country?: string;
+  timezone?: string;
   plan: string;
   status: string;
   settings: {
@@ -22,6 +28,7 @@ export interface OrganizationEntity {
     mfaRequired: boolean;
   };
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface OrganizationMemberEntity {
@@ -51,10 +58,17 @@ export class OrganizationRepository extends BaseRepository<
       name: String(json['name']),
       slug: String(json['slug']),
       domain: json['domain'] ? String(json['domain']) : undefined,
+      website: json['website'] ? String(json['website']) : undefined,
+      industry: json['industry'] ? String(json['industry']) : undefined,
+      companySize: json['companySize'] ? String(json['companySize']) : undefined,
+      description: json['description'] ? String(json['description']) : undefined,
+      country: json['country'] ? String(json['country']) : undefined,
+      timezone: json['timezone'] ? String(json['timezone']) : undefined,
       plan: String(json['plan']),
       status: String(json['status']),
       settings: json['settings'] as OrganizationEntity['settings'],
       createdAt: json['createdAt'] ? new Date(json['createdAt'] as string).toISOString() : new Date().toISOString(),
+      updatedAt: json['updatedAt'] ? new Date(json['updatedAt'] as string).toISOString() : undefined,
     };
   }
 

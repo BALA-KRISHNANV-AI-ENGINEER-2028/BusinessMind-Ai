@@ -48,6 +48,12 @@ const RetrievalPage = lazy(() =>
 const LoginPage = lazy(() =>
   import('../pages/auth/LoginPage').then((m) => ({ default: m.LoginPage })),
 );
+const SignUpPage = lazy(() =>
+  import('../pages/auth/SignUpPage').then((m) => ({ default: m.SignUpPage })),
+);
+const OnboardingPage = lazy(() =>
+  import('../pages/auth/OnboardingPage').then((m) => ({ default: m.OnboardingPage })),
+);
 const SessionExpiredPage = lazy(() =>
   import('../pages/auth/SessionExpiredPage').then((m) => ({ default: m.SessionExpiredPage })),
 );
@@ -88,6 +94,22 @@ export const router = createBrowserRouter([
             element: (
               <Suspense fallback={<PageFallback />}>
                 <LoginPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: '/signup',
+            element: (
+              <Suspense fallback={<PageFallback />}>
+                <SignUpPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: '/onboarding',
+            element: (
+              <Suspense fallback={<PageFallback />}>
+                <OnboardingPage />
               </Suspense>
             ),
           },
