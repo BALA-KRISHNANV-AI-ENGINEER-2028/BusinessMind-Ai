@@ -16,7 +16,7 @@ import { organizationService } from '../../services/organization.service';
 import type { OrgMemberRole } from '../../types/organization';
 
 export function OrganizationSettingsPage() {
-  const { activeOrganization, currentRole } = useOrganization();
+  const { activeOrganization, currentRole, refetchOrganization } = useOrganization();
   const [inviteOpen, setInviteOpen] = useState(false);
   const { showToast } = useToast();
 
@@ -64,6 +64,7 @@ export function OrganizationSettingsPage() {
         country,
         timezone,
       });
+      await refetchOrganization();
       showToast({ title: 'Company profile updated successfully', variant: 'success' });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to update company profile';

@@ -64,6 +64,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [session]);
 
+  // Re-hydrate session from MongoDB backend on mount to ensure fresh profile data
+  useEffect(() => {
+    if (!session) return;
+    authApi
+      .getMe()
+      .then((freshSession) => {
+        if (freshSession && freshSession.user) {
+          setSession(freshSession);
+        }
+      })
+      .catch(() => {
+        // Token invalid or session expired on backend
+        setSession(null);
+        localStorage.removeItem(STORAGE_KEY);
+      });
+  }, []);
+
   const checkSessionExpiration = (): boolean => {
     if (!session) return true;
     if (Date.now() >= session.expiresAt) {

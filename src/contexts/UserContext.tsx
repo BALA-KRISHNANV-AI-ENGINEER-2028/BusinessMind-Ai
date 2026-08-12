@@ -1,41 +1,42 @@
-import { createContext, useContext, useMemo, useState } from 'react';
+import { createContext, useContext, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import type { User, UserPreferences } from '../types/auth';
-import { mockUser } from '../mocks/auth.mock';
+import { useAuth } from './AuthContext';
+import { authApi } from '../services/auth.api';
 
 interface UserContextValue {
   user: User | null;
   preferences: UserPreferences;
-  updateProfile: (data: Partial<Omit<User, 'id' | 'preferences'>>) => void;
-  updatePreferences: (prefs: Partial<UserPreferences>) => void;
+  updateProfile: (data: Partial<Omit<User, 'id' | 'preferences'>>) => Promise<void>;
+  updatePreferences: (prefs: Partial<UserPreferences>) => Promise<void>;
 }
 
 export const UserContext = createContext<UserContextValue | undefined>(undefined);
 
 export function UserProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(mockUser);
+  const { user, updateUser } = useAuth();
 
-  const updateProfile = (data: Partial<Omit<User, 'id' | 'preferences'>>) => {
-    setUser((prev) => (prev ? { ...prev, ...data } : null));
+  const updateProfile = async (data: Partial<Omit<User, 'id' | 'preferences'>>) => {
+    if (!user) return;
+    const updated = await authApi.updateProfile({
+      fullName: data.fullName,
+      jobTitle: data.jobTitle,
+      phone: data.phone,
+      bio: data.bio,
+    });
+    updateUser(updated);
   };
 
-  const updatePreferences = (prefs: Partial<UserPreferences>) => {
-    setUser((prev) => {
-      if (!prev) return null;
-      return {
-        ...prev,
-        preferences: {
-          ...prev.preferences,
-          ...prefs,
-        },
-      };
-    });
+  const updatePreferences = async (prefs: Partial<UserPreferences>) => {
+    if (!user) return;
+    const updated = await authApi.updatePreferences(prefs);
+    updateUser(updated);
   };
 
   const preferences = useMemo(
     () =>
       user?.preferences ?? {
-        timezone: 'et',
+        timezone: 'UTC',
         language: 'en-US',
         emailNotifications: true,
         marketingEmails: false,

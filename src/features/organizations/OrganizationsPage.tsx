@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { UserPlus } from 'lucide-react';
 import { Table } from '../../components/ui/Table';
 import type { TableColumn } from '../../components/ui/Table';
@@ -9,11 +10,13 @@ import { Modal } from '../../components/ui/Modal';
 import { Input, Select } from '../../components/ui/Input';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { useToast } from '../../hooks/useToast';
-import { organizationMembers } from '../../mocks/organizations.mock';
-import type { OrganizationMember, MemberRole } from '../../mocks/organizations.mock';
+import { useOrganization } from '../../hooks/useOrganization';
+import { organizationService } from '../../services/organization.service';
+import type { OrganizationMember, OrgMemberRole } from '../../types/organization';
 
-const roleVariant: Record<MemberRole, BadgeVariant> = {
+const roleVariant: Record<string, BadgeVariant> = {
   owner: 'accent',
+  org_admin: 'accent',
   admin: 'neutral',
   member: 'neutral',
 };
@@ -29,18 +32,37 @@ const columns: TableColumn<OrganizationMember>[] = [
   {
     key: 'role',
     header: 'Role',
-    render: (member) => <Badge variant={roleVariant[member.role]}>{member.role}</Badge>,
+    render: (member) => <Badge variant={roleVariant[member.role] || 'neutral'}>{member.role}</Badge>,
   },
-  { key: 'joinedLabel', header: 'Joined' },
 ];
 
 export function OrganizationsPage() {
+  const { activeOrganization } = useOrganization();
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [email, setEmail] = useState('');
+  const [role, setRole] = useState<OrgMemberRole>('employee');
   const { showToast } = useToast();
 
-  function handleInvite() {
-    setInviteOpen(false);
-    showToast({ title: 'Invitation sent', variant: 'success' });
+  const { data: membersRes, refetch } = useQuery({
+    queryKey: ['organization', 'members', activeOrganization?.id],
+    queryFn: () => organizationService.getMembers(activeOrganization?.id || ''),
+    enabled: Boolean(activeOrganization?.id),
+  });
+
+  const members = membersRes?.success ? membersRes.data : [];
+
+  async function handleInvite() {
+    if (!activeOrganization || !email.trim()) return;
+    try {
+      await organizationService.inviteMember(activeOrganization.id, email.trim(), role);
+      setInviteOpen(false);
+      setEmail('');
+      showToast({ title: 'Invitation sent', variant: 'success' });
+      refetch();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to send invite';
+      showToast({ title: msg, variant: 'danger' });
+    }
   }
 
   return (
@@ -56,7 +78,7 @@ export function OrganizationsPage() {
         }
       />
 
-      <Table columns={columns} data={organizationMembers} keyExtractor={(member) => member.id} />
+      <Table columns={columns} data={members} keyExtractor={(member) => member.id} />
 
       <Modal
         open={inviteOpen}
@@ -73,8 +95,20 @@ export function OrganizationsPage() {
         }
       >
         <div className="space-y-4">
-          <Input label="Email address" type="email" placeholder="colleague@company.com" required />
-          <Select label="Role" options={roleOptions} defaultValue="member" />
+          <Input
+            label="Email address"
+            type="email"
+            placeholder="colleague@company.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <Select
+            label="Role"
+            options={roleOptions}
+            value={role}
+            onChange={(e) => setRole(e.target.value as OrgMemberRole)}
+          />
         </div>
       </Modal>
     </div>

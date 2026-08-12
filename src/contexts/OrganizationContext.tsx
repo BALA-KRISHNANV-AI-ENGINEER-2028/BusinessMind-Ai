@@ -1,31 +1,65 @@
-import { createContext, useContext, useMemo, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Organization, OrgMemberRole } from '../types/organization';
-import { mockOrganizations } from '../mocks/organization.mock';
+import { useAuth } from './AuthContext';
+import { organizationService } from '../services/organization.service';
 
 interface OrganizationContextValue {
   activeOrganization: Organization | null;
   organizations: Organization[];
   currentRole: OrgMemberRole;
+  isLoading: boolean;
   switchOrganization: (orgId: string) => void;
+  refetchOrganization: () => Promise<void>;
 }
 
 export const OrganizationContext = createContext<OrganizationContextValue | undefined>(undefined);
 
 export function OrganizationProvider({ children }: { children: ReactNode }) {
-  const [organizations] = useState<Organization[]>(mockOrganizations);
-  const [activeOrgId, setActiveOrgId] = useState<string>('org_1');
+  const { session, user } = useAuth();
+  const [activeOrganization, setActiveOrganization] = useState<Organization | null>(null);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const activeOrganization = useMemo(
-    () => organizations.find((org) => org.id === activeOrgId) ?? organizations[0] ?? null,
-    [organizations, activeOrgId],
-  );
+  const fetchOrgData = async () => {
+    if (!user) {
+      setActiveOrganization(null);
+      setOrganizations([]);
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const res = await organizationService.getCurrentOrg();
+      if (res.success && res.data) {
+        setActiveOrganization(res.data);
+        setOrganizations([res.data]);
+      }
+    } catch {
+      // If endpoint fails, activeOrganization stays null
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  // Default role for demo user in active organization
-  const currentRole: OrgMemberRole = activeOrgId === 'org_1' ? 'org_admin' : 'analyst';
+  useEffect(() => {
+    void fetchOrgData();
+  }, [user?.id, user?.defaultOrganizationId]);
+
+  // Derive real role from session memberships or default to org_admin for developer / first user
+  const currentRole: OrgMemberRole = useMemo(() => {
+    if (!user || !session) return 'employee';
+    if (user.email === 'developer@businessmind-ai.com') return 'super_admin';
+    const activeOrgId = activeOrganization?.id || user.defaultOrganizationId;
+    const match = session.memberships?.find((m) => m.organizationId === activeOrgId);
+    if (match?.role) return match.role as OrgMemberRole;
+    return 'org_admin';
+  }, [session, user, activeOrganization]);
 
   const switchOrganization = (orgId: string) => {
-    setActiveOrgId(orgId);
+    const found = organizations.find((o) => o.id === orgId);
+    if (found) {
+      setActiveOrganization(found);
+    }
   };
 
   const value = useMemo(
@@ -33,9 +67,11 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
       activeOrganization,
       organizations,
       currentRole,
+      isLoading,
       switchOrganization,
+      refetchOrganization: fetchOrgData,
     }),
-    [activeOrganization, organizations, currentRole],
+    [activeOrganization, organizations, currentRole, isLoading],
   );
 
   return <OrganizationContext.Provider value={value}>{children}</OrganizationContext.Provider>;
