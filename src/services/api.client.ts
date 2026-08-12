@@ -78,8 +78,23 @@ class ApiClient {
       }
 
       if (!res.ok) {
-        const errJson = await res.json().catch(() => ({ message: res.statusText }));
-        throw new Error(errJson.message || `HTTP ${res.status}`);
+        const errJson = (await res.json().catch(() => ({ message: res.statusText }))) as {
+          message?: string;
+          details?: Record<string, string[]>;
+        };
+
+        let message = errJson.message || `HTTP ${res.status}`;
+        if (errJson.details && typeof errJson.details === 'object') {
+          const detailMessages = Object.entries(errJson.details)
+            .map(([field, msgs]) => `${field}: ${Array.isArray(msgs) ? msgs.join(', ') : String(msgs)}`)
+            .join('; ');
+          if (detailMessages) {
+            message = `${message} — ${detailMessages}`;
+          }
+        }
+        const errorObj = new Error(message);
+        (errorObj as unknown as { details?: Record<string, string[]> }).details = errJson.details;
+        throw errorObj;
       }
 
       const json = (await res.json()) as { success?: boolean; data?: T; message?: string };

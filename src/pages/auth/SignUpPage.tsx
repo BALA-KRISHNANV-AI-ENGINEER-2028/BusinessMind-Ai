@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
@@ -8,13 +8,15 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../hooks/useToast';
 
 export function SignUpPage() {
+  const [searchParams] = useSearchParams();
+  const initialEmail = searchParams.get('email') || '';
   const { register, loginWithGoogle, isLoading } = useAuth();
   const navigate = useNavigate();
   const { showToast } = useToast();
 
   // Account
   const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
@@ -32,6 +34,13 @@ export function SignUpPage() {
   const [timezone, setTimezone] = useState('UTC');
 
   const [formError, setFormError] = useState<string | null>(null);
+  const [emailExists, setEmailExists] = useState(false);
+
+  useEffect(() => {
+    if (initialEmail && !email) {
+      setEmail(initialEmail);
+    }
+  }, [initialEmail]);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -79,8 +88,15 @@ export function SignUpPage() {
       navigate('/');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Registration failed. Please check your information.';
-      setFormError(msg);
-      showToast({ title: msg, variant: 'danger' });
+      if (msg.toLowerCase().includes('already exists') || msg.toLowerCase().includes('duplicate')) {
+        setEmailExists(true);
+        setFormError('An account with this email already exists. Please sign in to continue.');
+        showToast({ title: 'An account with this email already exists.', variant: 'danger' });
+      } else {
+        setEmailExists(false);
+        setFormError(msg);
+        showToast({ title: msg, variant: 'danger' });
+      }
     }
   };
 
@@ -129,11 +145,25 @@ export function SignUpPage() {
             </div>
           </div>
 
-          {formError && (
+          {emailExists ? (
+            <div className="p-3 rounded-md bg-danger/10 text-danger text-xs border border-danger/20 space-y-2">
+              <p className="font-semibold">An account with this email already exists.</p>
+              <p className="text-text-secondary">Please sign in to continue.</p>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="w-full mt-1 border-danger/30 text-danger hover:bg-danger/10"
+                onClick={() => navigate(`/login?email=${encodeURIComponent(email)}`)}
+              >
+                Sign In
+              </Button>
+            </div>
+          ) : formError ? (
             <div className="p-3 rounded-md bg-danger/10 text-danger text-xs border border-danger/20 font-medium">
               {formError}
             </div>
-          )}
+          ) : null}
 
           {/* Section 1: Account Information */}
           <div className="space-y-3">

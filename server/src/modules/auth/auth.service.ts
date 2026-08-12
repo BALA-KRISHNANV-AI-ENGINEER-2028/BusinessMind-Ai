@@ -176,7 +176,10 @@ export class AuthService {
    */
   async login(data: LoginDto, meta?: { ip?: string; userAgent?: string }): Promise<AuthSessionResponse> {
     const record = await userRepository.findByEmail(data.email);
-    if (!record || !record.passwordHash) {
+    if (!record) {
+      throw new NotFoundError('No account was found with this email.');
+    }
+    if (!record.passwordHash) {
       throw new UnauthorizedError('Invalid email or password.');
     }
 

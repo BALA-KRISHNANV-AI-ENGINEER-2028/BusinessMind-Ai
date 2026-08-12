@@ -14,8 +14,11 @@ export function LoginPage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
 
+  const [accountNotFound, setAccountNotFound] = useState(false);
+
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    setAccountNotFound(false);
     if (!email || !password) {
       showToast({ title: 'Please enter your email and password', variant: 'danger' });
       return;
@@ -24,8 +27,14 @@ export function LoginPage() {
       await login(email, password);
       showToast({ title: 'Signed in successfully', variant: 'success' });
       navigate('/');
-    } catch {
-      showToast({ title: 'Sign in failed. Check your credentials.', variant: 'danger' });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Sign in failed';
+      if (msg.toLowerCase().includes('no account was found') || msg.toLowerCase().includes('not found')) {
+        setAccountNotFound(true);
+        showToast({ title: 'No account was found with this email.', variant: 'danger' });
+      } else {
+        showToast({ title: msg || 'Sign in failed. Check your credentials.', variant: 'danger' });
+      }
     }
   };
 
@@ -79,6 +88,22 @@ export function LoginPage() {
               <div className="w-full border-t border-border" />
             </div>
           </div>
+
+          {accountNotFound && (
+            <div className="p-3 rounded-md bg-danger/10 text-danger text-xs border border-danger/20 space-y-2">
+              <p className="font-semibold">No account was found with this email.</p>
+              <p className="text-text-secondary">Create an account to get started.</p>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="w-full mt-1 border-danger/30 text-danger hover:bg-danger/10"
+                onClick={() => navigate(`/signup?email=${encodeURIComponent(email)}`)}
+              >
+                Create Account
+              </Button>
+            </div>
+          )}
 
           <Input
             label="Email"
