@@ -38,9 +38,10 @@ export function OAuthCallbackPage() {
       const error = searchParams.get('error');
       const token = searchParams.get('token');
       const expiresAt = searchParams.get('expiresAt');
+      const parsedExpiresAt = Number(expiresAt);
 
       // Google or backend returned an error
-      if (error || !token || !expiresAt) {
+      if (error || !token || !expiresAt || Number.isNaN(parsedExpiresAt)) {
         const message = error ?? 'Google sign-in was cancelled or failed.';
         showToast({ title: message, variant: 'danger' });
         void navigate('/login', { replace: true });
@@ -55,7 +56,7 @@ export function OAuthCallbackPage() {
         const fullSession = {
           ...session,
           token,
-          expiresAt: Number(expiresAt),
+          expiresAt: parsedExpiresAt,
         };
 
         setSessionFromCallback(fullSession);
