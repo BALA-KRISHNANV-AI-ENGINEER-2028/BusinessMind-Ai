@@ -155,6 +155,64 @@ export const config = Object.freeze({
   },
 
   /**
+   * Phase 8 — LLM Integration configuration.
+   * All values are sourced from environment variables with safe defaults.
+   * Server-side only — LLM_API_KEY must NEVER be exposed to the browser.
+   */
+  llm: {
+    /**
+     * LLM provider selection.
+     * "openai" = production (requires LLM_API_KEY)
+     * "mock"   = development / testing (no API key required)
+     */
+    provider: optionalEnv('LLM_PROVIDER', 'mock'),
+
+    /**
+     * LLM model name.
+     * Default: gpt-4o-mini
+     *   - 128K context window
+     *   - $0.15/1M input tokens, $0.60/1M output tokens
+     *   - Native JSON mode support
+     *   - Excellent instruction following
+     */
+    model: optionalEnv('LLM_MODEL', 'gpt-4o-mini'),
+
+    /**
+     * API key for the selected LLM provider.
+     * Server-side only — NEVER exposed to the browser.
+     * For OpenAI: can share with EMBEDDING_API_KEY or use a separate key.
+     */
+    apiKey: optionalEnv('LLM_API_KEY', ''),
+
+    /**
+     * Generation temperature (0.0 = deterministic, 1.0 = creative).
+     * Default: 0.1 — low temperature for business intelligence.
+     * Rationale: prioritises factual consistency over creative variation.
+     */
+    temperature: parseFloat(optionalEnv('LLM_TEMPERATURE', '0.1')),
+
+    /**
+     * Maximum tokens the LLM can produce in a single response.
+     * Default: 1024 — sufficient for grounded business answers with citations.
+     * Cost control: limits per-request output spend.
+     */
+    maxOutputTokens: optionalEnvInt('LLM_MAX_OUTPUT_TOKENS', 1024),
+
+    /**
+     * LLM request timeout in milliseconds.
+     * Default: 30000 (30 seconds) — generous for cold-start LLM providers.
+     */
+    timeoutMs: optionalEnvInt('LLM_TIMEOUT_MS', 30000),
+
+    /**
+     * Maximum number of retry attempts for transient LLM failures.
+     * Default: 2 — retries 429 (rate limit) and 5xx (server errors).
+     * The OpenAI SDK handles exponential backoff automatically.
+     */
+    maxRetries: optionalEnvInt('LLM_MAX_RETRIES', 2),
+  },
+
+  /**
    * Phase 7 — RAG Foundation configuration.
    * All values are sourced from environment variables with safe defaults.
    */
@@ -219,6 +277,29 @@ export const config = Object.freeze({
      * Must match the index created in Atlas UI (see ATLAS_VECTOR_INDEX.md).
      */
     vectorIndexName: optionalEnv('VECTOR_INDEX_NAME', 'document_chunk_vector_index'),
+
+    /**
+     * Phase 8 — Context limits for LLM input assembly.
+     */
+    /** Maximum number of evidence chunks to include in a single LLM context. */
+    maxContextChunks: optionalEnvInt('MAX_CONTEXT_CHUNKS', 5),
+
+    /**
+     * Approximate maximum character budget for the combined evidence context.
+     * At ~4 chars/token, 12000 chars ≈ 3000 tokens.
+     * Leaves ample room for system prompt + question + response within 128K.
+     */
+    maxContextChars: optionalEnvInt('MAX_CONTEXT_CHARS', 12000),
+
+    /** Maximum character length of any single chunk in the context. */
+    maxChunkLength: optionalEnvInt('MAX_CHUNK_LENGTH', 1000),
+
+    /**
+     * Minimum evidence score below which retrieval is considered insufficient.
+     * Applied AFTER retrievalMinScore pre-filters — this is an additional gate.
+     * Default: 0.65 (lower than retrievalMinScore=0.70 so this rarely triggers alone).
+     */
+    minEvidenceScore: parseFloat(optionalEnv('MIN_EVIDENCE_SCORE', '0.65')),
   },
 });
 
