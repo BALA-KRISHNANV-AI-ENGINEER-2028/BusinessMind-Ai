@@ -13,6 +13,7 @@ export type UserStatus = 'active' | 'invited' | 'suspended';
 export interface UserPreferences {
   timezone: string;
   language: string;
+  currency: string;
   emailNotifications: boolean;
   marketingEmails: boolean;
 }
@@ -93,6 +94,7 @@ const UserSchema = new Schema<IUserDocument>(
     preferences: {
       timezone: { type: String, default: 'America/New_York' },
       language: { type: String, default: 'en-US' },
+      currency: { type: String, default: 'USD' },
       emailNotifications: { type: Boolean, default: true },
       marketingEmails: { type: Boolean, default: false },
     },

@@ -14,10 +14,13 @@ export const updateProfileSchema = z.object({
   }),
 });
 
+const SUPPORTED_CURRENCIES = ['USD', 'EUR', 'GBP', 'INR', 'AUD', 'CAD', 'SGD', 'JPY'] as const;
+
 export const updatePreferencesSchema = z.object({
   body: z.object({
-    timezone: z.string().optional(),
+    timezone: z.string().max(60).optional(),
     language: z.string().max(10).optional(),
+    currency: z.enum(SUPPORTED_CURRENCIES).optional(),
     emailNotifications: z.boolean().optional(),
     marketingEmails: z.boolean().optional(),
   }),

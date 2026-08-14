@@ -154,6 +154,7 @@ export interface User {
   preferences: {
     timezone: string;
     language: string;
+    currency: string;
     emailNotifications: boolean;
     marketingEmails: boolean;
   };

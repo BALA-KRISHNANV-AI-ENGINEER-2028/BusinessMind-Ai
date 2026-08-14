@@ -178,6 +178,7 @@ export async function bootstrapDeveloperAccount(
     preferences: {
       timezone: 'America/New_York',
       language: 'en-US',
+      currency: 'USD',
       emailNotifications: true,
       marketingEmails: false,
     },

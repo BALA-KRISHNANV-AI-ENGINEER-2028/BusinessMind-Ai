@@ -38,6 +38,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       user?.preferences ?? {
         timezone: 'UTC',
         language: 'en-US',
+        currency: 'USD',
         emailNotifications: true,
         marketingEmails: false,
       },

@@ -19,6 +19,7 @@ usersRouter.get('/profile',            usersController.getProfile);
 usersRouter.get('/me',                 usersController.getProfile);
 usersRouter.patch('/profile',          validate(updateProfileSchema),     usersController.updateProfile);
 usersRouter.put('/me',                 validate(updateProfileSchema),     usersController.updateProfile);
+usersRouter.patch('/me',               validate(updateProfileSchema),     usersController.updateProfile);
 usersRouter.patch('/preferences',      validate(updatePreferencesSchema), usersController.updatePreferences);
 usersRouter.put('/me/preferences',     validate(updatePreferencesSchema), usersController.updatePreferences);
 usersRouter.post('/change-password',   validate(changePasswordSchema),    usersController.changePassword);

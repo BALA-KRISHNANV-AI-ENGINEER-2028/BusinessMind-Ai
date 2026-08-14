@@ -6,6 +6,7 @@ import type { OrgMemberRole } from './organization';
 export interface UserPreferences {
   timezone: string;
   language: string;
+  currency: string;
   emailNotifications: boolean;
   marketingEmails: boolean;
 }

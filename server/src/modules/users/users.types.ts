@@ -22,6 +22,7 @@ export interface UserProfile {
 export interface UserPreferences {
   timezone: string;
   language: string;
+  currency: string;
   emailNotifications: boolean;
   marketingEmails: boolean;
 }
@@ -37,6 +38,7 @@ export interface UpdateProfileDto {
 export interface UpdatePreferencesDto {
   timezone?: string;
   language?: string;
+  currency?: string;
   emailNotifications?: boolean;
   marketingEmails?: boolean;
 }

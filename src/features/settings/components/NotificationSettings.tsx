@@ -1,58 +1,93 @@
+/**
+ * NotificationSettings — Email and marketing notification preferences.
+ *
+ * Persists to MongoDB Atlas via:
+ *   PATCH /users/preferences → updates emailNotifications and marketingEmails on the User document.
+ *
+ * All form fields are initialised from live MongoDB data (user.preferences),
+ * not from mock/hardcoded defaults.
+ *
+ * Shows correct Saving / Saved / Save failed states based on actual API response.
+ */
+
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { useToast } from '../../../hooks/useToast';
-import { defaultNotificationSettings } from '../../../mocks/settings.mock';
+import { useUser } from '../../../hooks/useUser';
+import { useAuth } from '../../../contexts/AuthContext';
+import { authApi } from '../../../services/auth.api';
 
 const notificationsSchema = z.object({
-  emailNewRecommendation: z.boolean(),
-  emailAgentError: z.boolean(),
-  weeklySummaryDigest: z.boolean(),
-  slackAlerts: z.boolean(),
+  emailNotifications: z.boolean(),
+  marketingEmails: z.boolean(),
 });
 
 type NotificationsFormData = z.infer<typeof notificationsSchema>;
 
-const notificationItems: Array<{ key: keyof NotificationsFormData; label: string; description: string }> = [
+const notificationItems: Array<{
+  key: keyof NotificationsFormData;
+  label: string;
+  description: string;
+}> = [
   {
-    key: 'emailNewRecommendation',
-    label: 'New AI Recommendations',
-    description: 'Email me when the AI generates a new business recommendation',
+    key: 'emailNotifications',
+    label: 'Email Notifications',
+    description: 'Receive email updates for new AI recommendations, agent activity, and important alerts',
   },
   {
-    key: 'emailAgentError',
-    label: 'Agent Errors',
-    description: 'Email me when an agent encounters an error or gets stuck',
-  },
-  {
-    key: 'weeklySummaryDigest',
-    label: 'Weekly Summary Digest',
-    description: 'Receive a weekly summary of key business insights and decisions',
-  },
-  {
-    key: 'slackAlerts',
-    label: 'Slack Alerts',
-    description: 'Send important notifications to your connected Slack workspace',
+    key: 'marketingEmails',
+    label: 'Marketing Emails',
+    description: 'Receive product updates, tips, and promotional content from BusinessMind AI',
   },
 ];
 
 export function NotificationSettings() {
   const { showToast } = useToast();
+  const { preferences } = useUser();
+  const { updateUser } = useAuth();
 
   const {
     register,
     handleSubmit,
+    reset,
     formState: { isSubmitting, isDirty },
   } = useForm<NotificationsFormData>({
     resolver: zodResolver(notificationsSchema),
-    defaultValues: defaultNotificationSettings,
+    defaultValues: {
+      emailNotifications: preferences.emailNotifications ?? true,
+      marketingEmails: preferences.marketingEmails ?? false,
+    },
   });
 
-  const onSubmit = async (_data: NotificationsFormData) => {
-    await new Promise((r) => setTimeout(r, 400));
-    showToast({ title: 'Notification preferences saved', variant: 'success' });
+  // Re-sync when the real user data loads from MongoDB after mount
+  useEffect(() => {
+    reset({
+      emailNotifications: preferences.emailNotifications ?? true,
+      marketingEmails: preferences.marketingEmails ?? false,
+    });
+  }, [preferences.emailNotifications, preferences.marketingEmails, reset]);
+
+  const onSubmit = async (data: NotificationsFormData) => {
+    try {
+      const updatedUser = await authApi.updatePreferences({
+        emailNotifications: data.emailNotifications,
+        marketingEmails: data.marketingEmails,
+      });
+      // Sync AuthContext so logout/login returns the same persisted values
+      updateUser(updatedUser);
+      showToast({
+        title: 'Notification preferences saved',
+        description: 'Your email notification settings have been updated.',
+        variant: 'success',
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to save notification preferences';
+      showToast({ title: 'Save failed', description: message, variant: 'danger' });
+    }
   };
 
   return (

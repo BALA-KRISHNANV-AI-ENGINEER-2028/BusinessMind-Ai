@@ -12,6 +12,7 @@ export const mockUser: User = {
   preferences: {
     timezone: 'et',
     language: 'en-US',
+    currency: 'USD',
     emailNotifications: true,
     marketingEmails: false,
   },

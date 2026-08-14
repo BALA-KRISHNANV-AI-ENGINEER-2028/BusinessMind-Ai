@@ -99,6 +99,7 @@ export class AuthService {
       preferences: {
         timezone: data.timezone?.trim() || 'America/New_York',
         language: 'en-US',
+        currency: 'USD',
         emailNotifications: true,
         marketingEmails: false,
       },
@@ -494,6 +495,7 @@ export class AuthService {
       preferences: {
         timezone: data.timezone?.trim() || 'America/New_York',
         language: 'en-US',
+        currency: 'USD',
         emailNotifications: true,
         marketingEmails: false,
       },
