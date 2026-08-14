@@ -26,15 +26,29 @@ export function Modal({ open, onClose, title, description, children, footer, siz
   const titleId = useId();
   const descriptionId = useId();
 
+  // Keep a stable ref to onClose so the keydown handler never needs to be
+  // a dependency of the effect. Without this, the inline arrow function
+  // passed by the parent re-creates on every keystroke → new reference →
+  // effect re-runs → dialogRef.focus() steals focus from the input.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
+
   useEffect(() => {
     if (!open) return;
 
+    // Capture the element that had focus before the modal opened so we can
+    // restore it when the modal closes.
     previouslyFocused.current = document.activeElement as HTMLElement;
+    // Move focus to the dialog container so keyboard navigation works from
+    // the start. This only runs when `open` transitions to true, NOT on
+    // every re-render caused by typing.
     dialogRef.current?.focus();
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
-        onClose();
+        onCloseRef.current();
       }
     }
 
@@ -46,7 +60,10 @@ export function Modal({ open, onClose, title, description, children, footer, siz
       document.body.style.overflow = '';
       previouslyFocused.current?.focus();
     };
-  }, [open, onClose]);
+    // Intentionally omit onClose — we use onCloseRef to always call the
+    // latest version without making it a dependency that re-runs the effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   if (!open) return null;
 
