@@ -57,6 +57,12 @@ export const PERMISSIONS = {
 
   // AI & Analytics
   AI_CHAT: 'ai:chat',
+  /**
+   * Phase 9: Permission to execute specialized AI agents.
+   * Granted to: analyst, manager, org_admin, super_admin.
+   * NOT granted to: employee (agents surface sensitive business analysis).
+   */
+  AI_AGENT_EXECUTE: 'ai:agent:execute',
   RECOMMENDATIONS_DISMISS: 'recommendations:dismiss',
   RECOMMENDATIONS_READ: 'recommendations:read',
   ANALYTICS_VIEW_SENSITIVE: 'analytics:view_sensitive',
@@ -84,6 +90,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     PERMISSIONS.DOCUMENTS_DELETE,
     PERMISSIONS.DOCUMENTS_READ,
     PERMISSIONS.AI_CHAT,
+    PERMISSIONS.AI_AGENT_EXECUTE,
     PERMISSIONS.RECOMMENDATIONS_DISMISS,
     PERMISSIONS.RECOMMENDATIONS_READ,
     PERMISSIONS.ANALYTICS_VIEW_SENSITIVE,
@@ -96,6 +103,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     PERMISSIONS.DOCUMENTS_UPLOAD,
     PERMISSIONS.DOCUMENTS_READ,
     PERMISSIONS.AI_CHAT,
+    PERMISSIONS.AI_AGENT_EXECUTE,
     PERMISSIONS.RECOMMENDATIONS_DISMISS,
     PERMISSIONS.RECOMMENDATIONS_READ,
     PERMISSIONS.ANALYTICS_READ,
@@ -104,6 +112,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   [ROLES.ANALYST]: [
     PERMISSIONS.DOCUMENTS_READ,
     PERMISSIONS.AI_CHAT,
+    PERMISSIONS.AI_AGENT_EXECUTE,
     PERMISSIONS.RECOMMENDATIONS_READ,
     PERMISSIONS.ANALYTICS_READ,
   ],
@@ -112,6 +121,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     PERMISSIONS.DOCUMENTS_READ,
     PERMISSIONS.AI_CHAT,
     PERMISSIONS.RECOMMENDATIONS_READ,
+    // NOTE: Employees do NOT have AI_AGENT_EXECUTE — agents surface sensitive business analysis
   ],
 };
 

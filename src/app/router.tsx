@@ -42,6 +42,9 @@ const ProfilePage = lazy(() =>
 const RetrievalPage = lazy(() =>
   import('../features/retrieval/RetrievalPage').then((m) => ({ default: m.RetrievalPage })),
 );
+const SalesAgentPage = lazy(() =>
+  import('../features/agents/sales/SalesAgentPage').then((m) => ({ default: m.SalesAgentPage })),
+);
 
 
 // Auth & Error Pages
@@ -196,6 +199,14 @@ export const router = createBrowserRouter([
             element: (
               <Suspense fallback={<PageFallback />}>
                 <RetrievalPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: 'agents/sales',
+            element: (
+              <Suspense fallback={<PageFallback />}>
+                <SalesAgentPage />
               </Suspense>
             ),
           },
