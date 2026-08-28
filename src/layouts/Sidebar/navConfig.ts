@@ -14,7 +14,7 @@ import type { NavItem } from '../../types/navigation';
 export const primaryNavItems: NavItem[] = [
   { label: 'Dashboard', path: '/', icon: LayoutDashboard },
   { label: 'AI Assistant', path: '/assistant', icon: Bot },
-  { label: 'Sales Agent', path: '/agents/sales', icon: TrendingUp },
+  { label: 'AI Agents', path: '/agents', icon: Bot },
   { label: 'Knowledge Base', path: '/knowledge-base', icon: BookOpen },
   { label: 'Documents', path: '/documents', icon: FileText },
   { label: 'Recommendations', path: '/recommendations', icon: Lightbulb },

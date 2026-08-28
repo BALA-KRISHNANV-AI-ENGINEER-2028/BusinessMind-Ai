@@ -114,7 +114,81 @@ const MOCK_AGENTS_LIST: AgentListItem[] = [
       'regional-performance',
     ],
   },
+  {
+    id: 'finance',
+    name: 'Finance Intelligence Agent',
+    description:
+      'Analyzes financial evidence including revenue trends, expense breakdowns, profit and loss, margin analysis, cash flow, and budget vs. actual. Calculations show explicit inputs and arithmetic.',
+    version: '1.0.0',
+    capabilities: [
+      'revenue-analysis',
+      'expense-analysis',
+      'profit-analysis',
+      'margin-analysis',
+      'cash-flow-analysis',
+      'financial-calculations',
+    ],
+  },
+  {
+    id: 'customer',
+    name: 'Customer Intelligence Agent',
+    description:
+      'Analyzes customer evidence including trends, segments, retention, churn indicators, and behavior patterns. Applies data minimization — findings focus on segment-level insights.',
+    version: '1.0.0',
+    capabilities: [
+      'customer-trends',
+      'customer-segments',
+      'retention-analysis',
+      'churn-analysis',
+      'customer-behavior',
+      'feedback-analysis',
+    ],
+  },
+  {
+    id: 'inventory',
+    name: 'Inventory Intelligence Agent',
+    description:
+      'Analyzes inventory and supply-chain evidence including stock levels, low-stock risk, overstock indicators, inventory turnover, and product availability.',
+    version: '1.0.0',
+    capabilities: [
+      'stock-level-analysis',
+      'inventory-trends',
+      'low-stock-analysis',
+      'overstock-analysis',
+      'inventory-turnover',
+      'stock-risk-identification',
+    ],
+  },
+  {
+    id: 'market',
+    name: 'Market Intelligence Agent',
+    description:
+      'Analyzes market intelligence from uploaded knowledge sources. Uses only evidence from connected knowledge bases — never AI pre-training knowledge.',
+    version: '1.0.0',
+    capabilities: [
+      'market-trend-analysis',
+      'competitor-analysis',
+      'industry-analysis',
+      'market-opportunity-identification',
+      'threat-analysis',
+    ],
+  },
+  {
+    id: 'risk',
+    name: 'Risk Intelligence Agent',
+    description:
+      'Identifies and classifies business risks across financial, customer, inventory, operational, and market domains. Risks are severity-rated with evidence and reasoning included.',
+    version: '1.0.0',
+    capabilities: [
+      'risk-identification',
+      'risk-classification',
+      'financial-risk-analysis',
+      'customer-risk-analysis',
+      'cross-domain-risk-synthesis',
+    ],
+  },
 ];
+
 
 // ─── API Functions ────────────────────────────────────────────────────────────
 

@@ -55,6 +55,14 @@ export interface AgentMetadata {
    * Example: ["sales-analysis", "sales-trends", "revenue-analysis"]
    */
   capabilities: string[];
+
+  /**
+   * Optional domain tag for the agent (Phase 10+).
+   * Used for UI grouping and future orchestration routing.
+   * Example: "finance" | "customer" | "inventory" | "market" | "risk"
+   * Phase 9 Sales Agent does not set this field (remains undefined).
+   */
+  domain?: string;
 }
 
 // ─── Agent Interface ──────────────────────────────────────────────────────────
