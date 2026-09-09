@@ -13,14 +13,57 @@
 | **Index Name** | `document_chunk_vector_index` |
 | **Search Type** | Vector Search |
 | **Vector Field** | `embedding` |
-| **Dimensions** | `1536` (matches OpenAI `text-embedding-3-small` / mock provider) |
+| **Dimensions** | `768` (Google Gemini `text-embedding-004`) OR `1536` (OpenAI `text-embedding-3-small` / mock provider) |
 | **Similarity Metric** | `cosine` |
 
 ---
 
-## Exact JSON Definition
+## Exact JSON Definition for Google Gemini (768 Dimensions)
 
-Copy and paste this exact JSON payload into MongoDB Atlas:
+Copy and paste this JSON payload into MongoDB Atlas when using **Google Gemini (`EMBEDDING_PROVIDER=gemini`)**:
+
+```json
+{
+  "name": "document_chunk_vector_index",
+  "type": "vectorSearch",
+  "definition": {
+    "fields": [
+      {
+        "type": "vector",
+        "path": "embedding",
+        "numDimensions": 768,
+        "similarity": "cosine"
+      },
+      {
+        "type": "filter",
+        "path": "organizationId"
+      },
+      {
+        "type": "filter",
+        "path": "knowledgeBaseId"
+      },
+      {
+        "type": "filter",
+        "path": "documentId"
+      },
+      {
+        "type": "filter",
+        "path": "documentVersionId"
+      },
+      {
+        "type": "filter",
+        "path": "embeddingStatus"
+      }
+    ]
+  }
+}
+```
+
+---
+
+## Exact JSON Definition for OpenAI (1536 Dimensions)
+
+Copy and paste this JSON payload into MongoDB Atlas when using **OpenAI (`EMBEDDING_PROVIDER=openai`)**:
 
 ```json
 {
@@ -58,6 +101,23 @@ Copy and paste this exact JSON payload into MongoDB Atlas:
   }
 }
 ```
+
+---
+
+## Migration & Re-indexing Procedure (Switching Providers)
+
+If migrating an existing database from OpenAI (1536 dimensions) to Google Gemini (768 dimensions):
+
+1. **Delete / Drop Existing Vector Index**:
+   - In MongoDB Atlas Console, go to **Search / Vector Search** for your collection `documentchunks`.
+   - Click the three dots next to `document_chunk_vector_index` and select **Delete**.
+
+2. **Recreate Index with Matching Dimensions**:
+   - Create a new Vector Search index with the 768-dimension definition shown above.
+
+3. **Re-embed Existing Document Chunks**:
+   - Because existing chunks contain 1536-dimensional vectors from OpenAI, they cannot be compared directly against 768-dimensional query vectors.
+   - Run the re-embedding script or re-upload documents so that `DocumentChunk` records are re-embedded with Gemini's `text-embedding-004`.
 
 ---
 

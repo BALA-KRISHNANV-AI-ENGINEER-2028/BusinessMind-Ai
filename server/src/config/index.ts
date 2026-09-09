@@ -162,6 +162,7 @@ export const config = Object.freeze({
   llm: {
     /**
      * LLM provider selection.
+     * "gemini" = production (requires LLM_API_KEY or GEMINI_API_KEY)
      * "openai" = production (requires LLM_API_KEY)
      * "mock"   = development / testing (no API key required)
      */
@@ -169,20 +170,28 @@ export const config = Object.freeze({
 
     /**
      * LLM model name.
-     * Default: gpt-4o-mini
-     *   - 128K context window
-     *   - $0.15/1M input tokens, $0.60/1M output tokens
-     *   - Native JSON mode support
-     *   - Excellent instruction following
+     * Default: gemini-2.5-flash (Gemini) or gpt-4o-mini (OpenAI)
      */
-    model: optionalEnv('LLM_MODEL', 'gpt-4o-mini'),
+    model: optionalEnv(
+      'LLM_MODEL',
+      optionalEnv('LLM_PROVIDER', 'mock').toLowerCase() === 'gemini'
+        ? 'gemini-2.5-flash'
+        : optionalEnv('LLM_PROVIDER', 'mock').toLowerCase() === 'openai'
+          ? 'gpt-4o-mini'
+          : 'mock-llm-v1',
+    ),
 
     /**
      * API key for the selected LLM provider.
      * Server-side only — NEVER exposed to the browser.
-     * For OpenAI: can share with EMBEDDING_API_KEY or use a separate key.
+     * For Gemini: falls back to GEMINI_API_KEY if LLM_API_KEY is not set.
      */
-    apiKey: optionalEnv('LLM_API_KEY', ''),
+    apiKey: optionalEnv(
+      'LLM_API_KEY',
+      optionalEnv('LLM_PROVIDER', 'mock').toLowerCase() === 'gemini'
+        ? (process.env['GEMINI_API_KEY'] || '')
+        : '',
+    ),
 
     /**
      * Generation temperature (0.0 = deterministic, 1.0 = creative).
@@ -220,6 +229,7 @@ export const config = Object.freeze({
     // ─── Embedding Provider ───────────────────────────────────────────────────
     /**
      * Embedding provider selection.
+     * "gemini" = production (requires EMBEDDING_API_KEY or GEMINI_API_KEY)
      * "openai" = production (requires EMBEDDING_API_KEY)
      * "mock"   = development / testing (no API key required)
      */
@@ -227,22 +237,44 @@ export const config = Object.freeze({
 
     /**
      * Embedding model name.
-     * Default: text-embedding-3-small (1536 dims, $0.020/M tokens)
+     * Default: text-embedding-004 (Gemini, 768 dims) or text-embedding-3-small (OpenAI, 1536 dims)
      */
-    embeddingModel: optionalEnv('EMBEDDING_MODEL', 'text-embedding-3-small'),
+    embeddingModel: optionalEnv(
+      'EMBEDDING_MODEL',
+      optionalEnv('EMBEDDING_PROVIDER', 'mock').toLowerCase() === 'gemini'
+        ? 'text-embedding-004'
+        : optionalEnv('EMBEDDING_PROVIDER', 'mock').toLowerCase() === 'openai'
+          ? 'text-embedding-3-small'
+          : 'mock-embedding-v1',
+    ),
 
     /**
      * Number of dimensions in the output embedding vector.
      * MUST match the numDimensions configured in the Atlas Vector Search index.
+     * Default: 768 for gemini (text-embedding-004), 1536 for openai / mock.
      * Changing this after index creation requires dropping and recreating the index.
      */
-    embeddingDimensions: parseInt(optionalEnv('EMBEDDING_DIMENSIONS', '1536'), 10),
+    embeddingDimensions: parseInt(
+      optionalEnv(
+        'EMBEDDING_DIMENSIONS',
+        optionalEnv('EMBEDDING_PROVIDER', 'mock').toLowerCase() === 'gemini'
+          ? '768'
+          : '1536',
+      ),
+      10,
+    ),
 
     /**
      * API key for the selected embedding provider.
      * Server-side only — NEVER exposed to the browser.
+     * For Gemini: falls back to GEMINI_API_KEY if EMBEDDING_API_KEY is not set.
      */
-    embeddingApiKey: optionalEnv('EMBEDDING_API_KEY', ''),
+    embeddingApiKey: optionalEnv(
+      'EMBEDDING_API_KEY',
+      optionalEnv('EMBEDDING_PROVIDER', 'mock').toLowerCase() === 'gemini'
+        ? (process.env['GEMINI_API_KEY'] || '')
+        : '',
+    ),
 
     // ─── Chunking ─────────────────────────────────────────────────────────────
     /**

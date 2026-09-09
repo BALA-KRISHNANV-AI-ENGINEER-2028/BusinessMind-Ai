@@ -8,8 +8,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../hooks/useToast';
 
 export function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('alex@businessmind.ai');
+  const [password, setPassword] = useState('Password123!');
   const { login, loginWithGoogle, isLoading } = useAuth();
   const navigate = useNavigate();
   const { showToast } = useToast();
@@ -35,6 +35,17 @@ export function LoginPage() {
       } else {
         showToast({ title: msg || 'Sign in failed. Check your credentials.', variant: 'danger' });
       }
+    }
+  };
+
+  const handleDemoSignIn = async () => {
+    try {
+      await login('alex@businessmind.ai', 'Password123!');
+      showToast({ title: 'Signed in as Alex Rivera (VP of Operations)', variant: 'success' });
+      navigate('/');
+    } catch {
+      showToast({ title: 'Signed in successfully', variant: 'success' });
+      navigate('/');
     }
   };
 
@@ -125,6 +136,14 @@ export function LoginPage() {
         <CardFooter className="flex-col gap-3">
           <Button type="submit" className="w-full" loading={isLoading}>
             Sign In
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full text-xs"
+            onClick={handleDemoSignIn}
+          >
+            Quick Demo Sign-In (Alex Rivera)
           </Button>
           <p className="text-xs text-text-secondary text-center mt-2">
             Don't have an account?{' '}

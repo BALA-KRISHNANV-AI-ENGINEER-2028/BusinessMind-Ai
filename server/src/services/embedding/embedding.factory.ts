@@ -13,6 +13,7 @@
  */
 
 import type { IEmbeddingProvider } from './embedding.interface';
+import { GeminiEmbeddingProvider } from './gemini.embedding.provider';
 import { OpenAIEmbeddingProvider } from './openai.embedding.provider';
 import { MockEmbeddingProvider } from './mock.embedding.provider';
 import { config } from '../../config';
@@ -22,6 +23,20 @@ function createEmbeddingProvider(): IEmbeddingProvider {
   const providerName = config.rag.embeddingProvider.toLowerCase();
 
   switch (providerName) {
+    case 'gemini': {
+      if (!config.rag.embeddingApiKey) {
+        throw new Error(
+          '[EmbeddingFactory] EMBEDDING_API_KEY (or GEMINI_API_KEY) is required when EMBEDDING_PROVIDER=gemini. ' +
+          'Set it in your environment or use EMBEDDING_PROVIDER=mock for local development.',
+        );
+      }
+      logger.info(
+        { provider: 'gemini', model: config.rag.embeddingModel, dimensions: config.rag.embeddingDimensions },
+        '[EmbeddingFactory] Using Gemini embedding provider.',
+      );
+      return new GeminiEmbeddingProvider();
+    }
+
     case 'openai': {
       if (!config.rag.embeddingApiKey) {
         throw new Error(
@@ -47,7 +62,7 @@ function createEmbeddingProvider(): IEmbeddingProvider {
     default: {
       throw new Error(
         `[EmbeddingFactory] Unknown EMBEDDING_PROVIDER: "${providerName}". ` +
-        'Supported values: openai, mock.',
+        'Supported values: gemini, openai, mock.',
       );
     }
   }

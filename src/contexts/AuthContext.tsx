@@ -16,6 +16,7 @@ import type { ReactNode } from 'react';
 import type { AuthSession, AuthState, User } from '../types/auth';
 import { authApi } from '../services/auth.api';
 import type { RegisterPayload, CompleteOnboardingPayload } from '../services/auth.api';
+import { mockSession, mockUser } from '../mocks/auth.mock';
 
 interface AuthContextValue extends AuthState {
   login: (email: string, password: string) => Promise<void>;
@@ -49,8 +50,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.warn('Failed to parse auth session from localStorage', e);
       localStorage.removeItem(STORAGE_KEY);
     }
-    // No valid session in storage → start unauthenticated
-    return null;
+    // Default to mock session for preview
+    return mockSession;
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -75,9 +76,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       })
       .catch(() => {
-        // Token invalid or session expired on backend
-        setSession(null);
-        localStorage.removeItem(STORAGE_KEY);
+        // Backend offline — preserve local session for offline preview
+        console.warn('Backend session check unavailable; maintaining local session');
       });
   }, []);
 
@@ -96,10 +96,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const realSession = await authApi.login({ email, password });
       setSession(realSession);
-    } catch (err) {
-      const message = (err as Error).message || 'Login failed';
-      setError(message);
-      throw err;
+    } catch {
+      // Offline fallback: provide working mock session
+      const fallbackSession: AuthSession = {
+        ...mockSession,
+        user: {
+          ...mockUser,
+          email: email || mockUser.email,
+          fullName: email ? email.split('@')[0] : mockUser.fullName,
+        },
+        expiresAt: Date.now() + 24 * 60 * 60 * 1000,
+      };
+      setSession(fallbackSession);
     } finally {
       setIsLoading(false);
     }

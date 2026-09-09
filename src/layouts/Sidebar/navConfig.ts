@@ -1,7 +1,6 @@
 import {
   LayoutDashboard,
   Bot,
-  TrendingUp,
   BookOpen,
   FileText,
   Lightbulb,

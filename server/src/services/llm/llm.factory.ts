@@ -21,6 +21,7 @@
  */
 
 import type { ILLMProvider } from './llm.interface';
+import { GeminiLLMProvider } from './gemini.llm.provider';
 import { OpenAILLMProvider } from './openai.llm.provider';
 import { MockLLMProvider } from './mock.llm.provider';
 import { config } from '../../config';
@@ -30,6 +31,20 @@ function createLLMProvider(): ILLMProvider {
   const providerName = config.llm.provider.toLowerCase();
 
   switch (providerName) {
+    case 'gemini': {
+      if (!config.llm.apiKey) {
+        throw new Error(
+          '[LLMFactory] LLM_API_KEY (or GEMINI_API_KEY) is required when LLM_PROVIDER=gemini. ' +
+          'Set it in your environment or use LLM_PROVIDER=mock for local development.',
+        );
+      }
+      logger.info(
+        { provider: 'gemini', model: config.llm.model },
+        '[LLMFactory] Using Gemini LLM provider.',
+      );
+      return new GeminiLLMProvider();
+    }
+
     case 'openai': {
       if (!config.llm.apiKey) {
         throw new Error(
@@ -55,7 +70,7 @@ function createLLMProvider(): ILLMProvider {
     default: {
       throw new Error(
         `[LLMFactory] Unknown LLM_PROVIDER: "${providerName}". ` +
-        'Supported values: openai, mock.',
+        'Supported values: gemini, openai, mock.',
       );
     }
   }

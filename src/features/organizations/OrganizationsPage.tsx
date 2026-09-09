@@ -27,7 +27,12 @@ const roleOptions = [
 ];
 
 const columns: TableColumn<OrganizationMember>[] = [
-  { key: 'name', header: 'Name', sortable: true },
+  {
+    key: 'fullName',
+    header: 'Name',
+    sortable: true,
+    render: (member) => member.fullName || (member as unknown as { name: string }).name,
+  },
   { key: 'email', header: 'Email' },
   {
     key: 'role',
