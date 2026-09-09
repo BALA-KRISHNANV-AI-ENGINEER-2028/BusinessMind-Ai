@@ -41,6 +41,8 @@ import { sessionRouter } from './session.routes';
 import { retrievalRouter } from '../modules/retrieval';
 // Phase 9: Specialized Agentic AI
 import { agentsRouter } from '../modules/agents';
+import { decisionsRouter } from '../modules/decisions/decisions.routes';
+import { dashboardRouter } from '../modules/dashboard/dashboard.routes';
 
 export const apiV1Router = Router();
 
@@ -62,3 +64,5 @@ apiV1Router.use(API_ROUTES.SETTINGS, settingsRouter);
 apiV1Router.use(API_ROUTES.RETRIEVAL, retrievalRouter);
 // Phase 9: Specialized Agentic AI agents
 apiV1Router.use('/agents', agentsRouter);
+apiV1Router.use('/decisions', decisionsRouter);
+apiV1Router.use('/dashboard', dashboardRouter);

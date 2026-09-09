@@ -19,4 +19,8 @@ export const recommendationsController = {
     const rec = await recommendationsService.dismiss(req.params['id']!, req.user!.organizationId, req.body?.reason);
     sendSuccess(res, rec, 'Recommendation dismissed');
   }),
+  generate: asyncHandler(async (req: Request, res: Response) => {
+    const result = await recommendationsService.generate(req.user!.organizationId, req.user?.id);
+    sendSuccess(res, result, 'Recommendations generated successfully');
+  }),
 };

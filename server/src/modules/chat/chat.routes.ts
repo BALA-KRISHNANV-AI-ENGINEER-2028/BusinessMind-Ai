@@ -14,5 +14,9 @@ chatRouter.use(authenticate);
 chatRouter.get('/threads', requirePermission(PERMISSIONS.AI_CHAT), validate(listChatThreadsQuerySchema), chatController.getThreads);
 chatRouter.post('/threads', requirePermission(PERMISSIONS.AI_CHAT), validate(createThreadSchema), chatController.createThread);
 chatRouter.get('/threads/:threadId/messages', requirePermission(PERMISSIONS.AI_CHAT), chatController.getThreadMessages);
+chatRouter.post('/threads/:threadId/messages', aiLimiter, requirePermission(PERMISSIONS.AI_CHAT), (req, res, next) => {
+  req.body = { ...req.body, threadId: req.params['threadId'] };
+  chatController.sendMessage(req, res, next);
+});
 chatRouter.post('/messages', aiLimiter, requirePermission(PERMISSIONS.AI_CHAT), validate(sendMessageSchema), chatController.sendMessage);
 chatRouter.delete('/threads/:threadId', requirePermission(PERMISSIONS.AI_CHAT), chatController.deleteThread);

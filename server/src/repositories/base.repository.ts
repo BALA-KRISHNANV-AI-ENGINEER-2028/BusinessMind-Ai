@@ -15,13 +15,17 @@
  */
 
 import type { Model, FilterQuery, UpdateQuery } from 'mongoose';
+import crypto from 'crypto';
 import type { IRepository } from '../interfaces/repository.interface';
 import type { PaginationOptions, PaginationMeta } from '../types/common.types';
 import { buildPaginationMeta, toMongoosePagination } from '../utils/pagination.util';
+import { isDatabaseConnected } from '../config/database.config';
 
 export abstract class BaseRepository<TDocument, TEntity, TCreate, TUpdate>
   implements IRepository<TEntity, TCreate, TUpdate>
 {
+  protected readonly memoryStore: Map<string, any> = new Map();
+
   constructor(protected readonly model: Model<TDocument>) {}
 
   // ─── Abstract Methods ────────────────────────────────────────────────────────
@@ -32,9 +36,18 @@ export abstract class BaseRepository<TDocument, TEntity, TCreate, TUpdate>
    */
   protected abstract toEntity(document: TDocument): TEntity;
 
+  protected isConnected(): boolean {
+    return isDatabaseConnected();
+  }
+
   // ─── findById ────────────────────────────────────────────────────────────────
 
   async findById(id: string): Promise<TEntity | null> {
+    if (!this.isConnected()) {
+      const item = this.memoryStore.get(id);
+      if (!item || item.deletedAt) return null;
+      return item as TEntity;
+    }
     const doc = await this.model.findById(id).exec();
     return doc ? this.toEntity(doc) : null;
   }
@@ -45,6 +58,22 @@ export abstract class BaseRepository<TDocument, TEntity, TCreate, TUpdate>
     filters: FilterQuery<TDocument>,
     pagination: PaginationOptions,
   ): Promise<{ data: TEntity[]; pagination: PaginationMeta }> {
+    if (!this.isConnected()) {
+      let items = Array.from(this.memoryStore.values()).filter((it) => !it.deletedAt);
+      for (const [key, val] of Object.entries(filters)) {
+        if (val !== undefined && val !== null) {
+          items = items.filter((it) => it[key] === val);
+        }
+      }
+      const total = items.length;
+      const { skip, limit } = toMongoosePagination(pagination);
+      const data = items.slice(skip, skip + limit) as TEntity[];
+      return {
+        data,
+        pagination: buildPaginationMeta(pagination, total),
+      };
+    }
+
     const { skip, limit } = toMongoosePagination(pagination);
 
     const sortField = pagination.sortBy ?? 'createdAt';
@@ -69,6 +98,20 @@ export abstract class BaseRepository<TDocument, TEntity, TCreate, TUpdate>
   // ─── create ──────────────────────────────────────────────────────────────────
 
   async create(data: TCreate): Promise<TEntity> {
+    if (!this.isConnected()) {
+      const id =
+        (data as any).id || (data as any)._id || crypto.randomUUID();
+      const now = new Date().toISOString();
+      const entity = {
+        ...(data as any),
+        id,
+        _id: id,
+        createdAt: (data as any).createdAt || now,
+        updatedAt: now,
+      } as TEntity;
+      this.memoryStore.set(id, entity);
+      return entity;
+    }
     const doc = await this.model.create(data);
     return this.toEntity(doc);
   }
@@ -76,6 +119,17 @@ export abstract class BaseRepository<TDocument, TEntity, TCreate, TUpdate>
   // ─── update ──────────────────────────────────────────────────────────────────
 
   async update(id: string, data: Partial<TUpdate>): Promise<TEntity | null> {
+    if (!this.isConnected()) {
+      const existing = this.memoryStore.get(id);
+      if (!existing || existing.deletedAt) return null;
+      const updated = {
+        ...existing,
+        ...(data as any),
+        updatedAt: new Date().toISOString(),
+      };
+      this.memoryStore.set(id, updated);
+      return updated as TEntity;
+    }
     const doc = await this.model
       .findByIdAndUpdate(
         id,
@@ -94,6 +148,12 @@ export abstract class BaseRepository<TDocument, TEntity, TCreate, TUpdate>
    * Falls back to hard delete if no soft-delete field is present.
    */
   async delete(id: string): Promise<boolean> {
+    if (!this.isConnected()) {
+      const existing = this.memoryStore.get(id);
+      if (!existing) return false;
+      existing.deletedAt = new Date().toISOString();
+      return true;
+    }
     const result = await this.model
       .findByIdAndUpdate(id, { $set: { deletedAt: new Date() } }, { new: true })
       .exec();
@@ -103,12 +163,25 @@ export abstract class BaseRepository<TDocument, TEntity, TCreate, TUpdate>
   // ─── count ───────────────────────────────────────────────────────────────────
 
   async count(filters: FilterQuery<TDocument> = {}): Promise<number> {
+    if (!this.isConnected()) {
+      let items = Array.from(this.memoryStore.values()).filter((it) => !it.deletedAt);
+      for (const [key, val] of Object.entries(filters)) {
+        if (val !== undefined && val !== null) {
+          items = items.filter((it) => it[key] === val);
+        }
+      }
+      return items.length;
+    }
     return this.model.countDocuments(filters).exec();
   }
 
   // ─── exists ──────────────────────────────────────────────────────────────────
 
   async exists(id: string): Promise<boolean> {
+    if (!this.isConnected()) {
+      const item = this.memoryStore.get(id);
+      return Boolean(item && !item.deletedAt);
+    }
     const result = await this.model.exists({ _id: id }).exec();
     return result !== null;
   }
@@ -120,6 +193,15 @@ export abstract class BaseRepository<TDocument, TEntity, TCreate, TUpdate>
    * Not in the IRepository interface — available as a protected utility.
    */
   protected async findOne(filters: FilterQuery<TDocument>): Promise<TEntity | null> {
+    if (!this.isConnected()) {
+      let items = Array.from(this.memoryStore.values()).filter((it) => !it.deletedAt);
+      for (const [key, val] of Object.entries(filters)) {
+        if (val !== undefined && val !== null) {
+          items = items.filter((it) => it[key] === val);
+        }
+      }
+      return (items[0] as TEntity) ?? null;
+    }
     const doc = await this.model.findOne(filters).exec();
     return doc ? this.toEntity(doc) : null;
   }
@@ -133,6 +215,11 @@ export abstract class BaseRepository<TDocument, TEntity, TCreate, TUpdate>
     field: string,
     value: unknown,
   ): Promise<TEntity | null> {
+    if (!this.isConnected()) {
+      const items = Array.from(this.memoryStore.values()).filter((it) => !it.deletedAt);
+      const found = items.find((it) => it[field] === value);
+      return (found as TEntity) ?? null;
+    }
     const doc = await this.model.findOne({ [field]: value } as FilterQuery<TDocument>).exec();
     return doc ? this.toEntity(doc) : null;
   }

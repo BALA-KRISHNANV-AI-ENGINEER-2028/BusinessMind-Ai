@@ -72,12 +72,37 @@ export class OrganizationRepository extends BaseRepository<
     };
   }
 
+  private memoryMembers = new Map<string, { id: string; organizationId: string; userId: string; role: Role; status: MemberStatus; joinedAt: string; deletedAt?: string }>();
+
   async findBySlug(slug: string): Promise<OrganizationEntity | null> {
+    if (!this.isConnected()) {
+      const match = Array.from(this.memoryStore.values()).find(
+        (o: any) => o.slug?.toLowerCase().trim() === slug.toLowerCase().trim() && !o.deletedAt
+      );
+      return match || null;
+    }
     const doc = await this.model.findOne({ slug: slug.toLowerCase().trim(), deletedAt: null }).exec();
     return doc ? this.toEntity(doc) : null;
   }
 
   async getUserMemberships(userId: string): Promise<OrganizationMemberEntity[]> {
+    if (!this.isConnected()) {
+      const members = Array.from(this.memoryMembers.values()).filter(
+        (m) => m.userId === userId && !m.deletedAt
+      );
+      return members.map((m) => {
+        const org = this.memoryStore.get(m.organizationId);
+        return {
+          id: m.id,
+          organizationId: m.organizationId,
+          organizationName: org?.name ?? 'Organization',
+          userId: m.userId,
+          role: m.role,
+          status: m.status,
+          joinedAt: m.joinedAt,
+        };
+      });
+    }
     const members = await OrganizationMemberModel.find({ userId, deletedAt: null })
       .populate('organizationId', 'name')
       .exec();
@@ -97,6 +122,14 @@ export class OrganizationRepository extends BaseRepository<
   }
 
   async getMemberRole(organizationId: string, userId: string): Promise<Role | null> {
+    if (!this.isConnected()) {
+      for (const m of this.memoryMembers.values()) {
+        if (m.organizationId === organizationId && m.userId === userId && m.status === 'active' && !m.deletedAt) {
+          return m.role;
+        }
+      }
+      return null;
+    }
     const member = await OrganizationMemberModel.findOne({
       organizationId,
       userId,
@@ -113,6 +146,18 @@ export class OrganizationRepository extends BaseRepository<
     status?: MemberStatus;
     invitedBy?: string;
   }): Promise<void> {
+    if (!this.isConnected()) {
+      const id = crypto.randomUUID();
+      this.memoryMembers.set(id, {
+        id,
+        organizationId: data.organizationId,
+        userId: data.userId,
+        role: data.role,
+        status: data.status ?? 'active',
+        joinedAt: new Date().toISOString(),
+      });
+      return;
+    }
     await OrganizationMemberModel.create({
       organizationId: data.organizationId,
       userId: data.userId,

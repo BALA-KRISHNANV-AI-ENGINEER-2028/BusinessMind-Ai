@@ -50,8 +50,20 @@ export class UserRepository extends BaseRepository<
   }
 
   async findByEmail(email: string): Promise<{ user: User; passwordHash?: string; doc: IUserDocument } | null> {
+    const normalized = email.toLowerCase().trim();
+    if (!this.isConnected()) {
+      const match = Array.from(this.memoryStore.values()).find(
+        (u: any) => u.email?.toLowerCase().trim() === normalized && !u.deletedAt
+      );
+      if (!match) return null;
+      return {
+        user: match,
+        passwordHash: (match as any).passwordHash,
+        doc: match as any,
+      };
+    }
     const doc = await this.model
-      .findOne({ email: email.toLowerCase().trim(), deletedAt: null })
+      .findOne({ email: normalized, deletedAt: null })
       .exec();
     if (!doc) return null;
     return {
@@ -62,6 +74,12 @@ export class UserRepository extends BaseRepository<
   }
 
   async findByGoogleId(googleId: string): Promise<User | null> {
+    if (!this.isConnected()) {
+      const match = Array.from(this.memoryStore.values()).find(
+        (u: any) => (u as any).googleId === googleId && !u.deletedAt
+      );
+      return match || null;
+    }
     const doc = await this.model.findOne({ googleId, deletedAt: null }).exec();
     return doc ? this.toEntity(doc) : null;
   }

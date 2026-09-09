@@ -11,5 +11,7 @@ export const recommendationsRouter = Router();
 recommendationsRouter.use(authenticate);
 
 recommendationsRouter.get('/', requirePermission(PERMISSIONS.RECOMMENDATIONS_READ), validate(listRecommendationsQuerySchema), recommendationsController.getAll);
+recommendationsRouter.post('/generate', recommendationsController.generate);
 recommendationsRouter.get('/:id', requirePermission(PERMISSIONS.RECOMMENDATIONS_READ), recommendationsController.getById);
 recommendationsRouter.post('/:id/dismiss', requirePermission(PERMISSIONS.RECOMMENDATIONS_DISMISS), validate(dismissRecommendationSchema), recommendationsController.dismiss);
+recommendationsRouter.patch('/:id/dismiss', requirePermission(PERMISSIONS.RECOMMENDATIONS_DISMISS), recommendationsController.dismiss);
