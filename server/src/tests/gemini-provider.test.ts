@@ -213,7 +213,7 @@ export async function runGeminiVerification(): Promise<{ passed: boolean; result
 
   // ── Test 10: Express createApp initialization with routes ───────────────────
   try {
-    const { createApp } = await import('../app');
+    const { createApp } = require('../app');
     const app = createApp();
     if (app && typeof app.listen === 'function') {
       results.push({ test: '10. App Lifecycle: Express application initializes cleanly with all route modules', status: 'PASSED' });

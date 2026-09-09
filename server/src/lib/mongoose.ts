@@ -17,6 +17,9 @@ import { logger } from '../config/logger.config';
  * Called from lib/database.ts before the first connection is established.
  */
 export function configureMongoose(): void {
+  // ── Fail fast when database is offline ────────────────────────────────────
+  mongoose.set('bufferCommands', false);
+
   // ── Strict mode: reject fields not in schema ──────────────────────────────
   mongoose.set('strict', true);
 

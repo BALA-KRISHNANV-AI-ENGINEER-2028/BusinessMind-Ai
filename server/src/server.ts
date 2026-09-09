@@ -39,8 +39,7 @@ async function bootstrap(): Promise<void> {
   try {
     await connectDatabase();
   } catch (err) {
-    logger.error({ err }, '❌ Failed to connect to database — aborting startup.');
-    process.exit(1);
+    logger.warn({ err }, '⚠️ Failed to connect to MongoDB — continuing in offline/mock mode.');
   }
 
   // 3. Idempotently bootstrap Developer / Admin account in production
